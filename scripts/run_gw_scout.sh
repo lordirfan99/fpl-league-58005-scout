@@ -1,6 +1,7 @@
 #!/bin/bash
 # run_gw_scout.sh — Shell wrapper for cron execution
 # Called by cron job after each GW finishes
+# Fetches data for both leagues (58005 + 131997) and generates reports
 # Passes GW number as argument or auto-detects
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -17,11 +18,10 @@ fi
 GW="${1:-}"
 if [ -z "$GW" ]; then
     GW=$(python3 -c "
-import urllib.request, json, time
+import urllib.request, json
 headers = {'User-Agent': 'Mozilla/5.0'}
 req = urllib.request.Request('https://fantasy.premierleague.com/api/bootstrap-static/', headers=headers)
 data = json.loads(urllib.request.urlopen(req).read().decode())
-# Find the latest finished GW
 for e in reversed(data['events']):
     if e.get('finished'):
         print(e['id'])
@@ -35,25 +35,34 @@ if [ -z "$GW" ] || [ "$GW" = "0" ]; then
 fi
 
 echo "=== GW${GW} Scout Pipeline ==="
+echo "Leagues: 58005 + 131997"
 echo "Started: $(date -u)"
 
-# Step 1: Fetch data
-python3 "$SCRIPT_DIR/fetch_gw_data.py" --gw "$GW" --max 686
+# Step 1: Fetch data for both leagues (deduplicated)
+echo "--- Fetching data ---"
+python3 "$SCRIPT_DIR/fetch_gw_data.py" --gw "$GW" --max 3000 --league 58005 131997
 FETCH_EXIT=$?
 if [ $FETCH_EXIT -ne 0 ]; then
     echo "ERROR: Fetch failed (exit $FETCH_EXIT)"
     exit 1
 fi
 
-# Step 2: Generate reports
-python3 "$SCRIPT_DIR/generate_analysis.py" --gw "$GW"
-ANALYSIS_EXIT=$?
-if [ $ANALYSIS_EXIT -ne 0 ]; then
-    echo "ERROR: Analysis failed (exit $ANALYSIS_EXIT)"
-    exit 1
+# Step 2: Generate reports for each league
+echo "--- Generating reports for League 58005 ---"
+python3 "$SCRIPT_DIR/generate_analysis.py" --gw "$GW" --league 58005
+ANALYSIS_EXIT_1=$?
+if [ $ANALYSIS_EXIT_1 -ne 0 ]; then
+    echo "ERROR: Analysis for league 58005 failed (exit $ANALYSIS_EXIT_1)"
+fi
+
+echo "--- Generating reports for League 131997 ---"
+python3 "$SCRIPT_DIR/generate_analysis.py" --gw "$GW" --league 131997
+ANALYSIS_EXIT_2=$?
+if [ $ANALYSIS_EXIT_2 -ne 0 ]; then
+    echo "ERROR: Analysis for league 131997 failed (exit $ANALYSIS_EXIT_2)"
 fi
 
 echo "=== GW${GW} Pipeline Complete ==="
 echo "Finished: $(date -u)"
+echo "Data: data/gw${GW}_league{58005,131997}_data.json"
 echo "Reports: reports/GW${GW}/"
-echo "Data: data/gw${GW}_data.json"

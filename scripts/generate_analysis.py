@@ -3,7 +3,7 @@
 FPL GW Analysis Report — generates comprehensive analysis of league competitors.
 Reads from gw{gw}_data.json and produces reports.
 
-Usage: python3 generate_analysis.py --gw <num> [--data-dir <path>] [--output-dir <path>]
+Usage: python3 generate_analysis.py --gw <num> [--league 58005] [--data-dir <path>] [--output-dir <path>]
 """
 
 import json
@@ -521,30 +521,32 @@ def generate_competitive_strategy(gw, analysis, competitors, output_dir):
 def main():
     parser = argparse.ArgumentParser(description='FPL GW Analysis Report Generator')
     parser.add_argument('--gw', type=int, required=True, help='Gameweek number')
+    parser.add_argument('--league', type=int, default=58005, help='League ID (default: 58005)')
     parser.add_argument('--data-dir', default=DATA_DIR)
     parser.add_argument('--output-dir', default=REPORTS_DIR)
     parser.add_argument('--compact', action='store_true', help='Use compact data only (faster, less detail)')
     args = parser.parse_args()
-    
+
     gw = args.gw
+    league_id = args.league
     data_dir = args.data_dir
     output_dir = os.path.join(args.output_dir, f"GW{gw}")
     os.makedirs(output_dir, exist_ok=True)
-    
-    print(f"📊 Generating analysis for GW{gw}...")
-    
-    # Load data
+
+    print(f"📊 Generating analysis for GW{gw} — League {league_id}...")
+
+    # Load data with league-specific filenames
     if args.compact:
-        data = load_compact_data(gw, data_dir)
+        data = load_compact_data(gw, league_id, data_dir)
         if not data:
-            print("❌ Compact data not found. Run fetch_gw_data.py first or omit --compact.")
+            print(f"❌ Compact data not found (gw{gw}_league{league_id}_compact.json). Run fetch_gw_data.py first.")
             return 1
         competitors = data['competitors']
         competitors_full = None
     else:
-        data = load_full_data(gw, data_dir)
+        data = load_full_data(gw, league_id, data_dir)
         if not data:
-            print("❌ Full data not found. Run fetch_gw_data.py first.")
+            print(f"❌ Full data not found (gw{gw}_league{league_id}_data.json). Run fetch_gw_data.py first.")
             return 1
         competitors = data['competitors']
         competitors_full = competitors
