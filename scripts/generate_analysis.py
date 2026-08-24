@@ -22,28 +22,54 @@ def load_data(data_path):
     with open(data_path) as f:
         return json.load(f)
 
-def load_compact_data(gw, data_dir=DATA_DIR):
-    path = os.path.join(data_dir, f"gw{gw}_data_compact.json")
+def load_compact_data(gw, league_id, data_dir=DATA_DIR):
+    path = os.path.join(data_dir, f"gw{gw}_league{league_id}_compact.json")
     if os.path.exists(path):
         with open(path) as f:
             return json.load(f)
     return None
 
-def load_full_data(gw, data_dir=DATA_DIR):
-    path = os.path.join(data_dir, f"gw{gw}_data.json")
+def load_full_data(gw, league_id, data_dir=DATA_DIR):
+    path = os.path.join(data_dir, f"gw{gw}_league{league_id}_data.json")
     if os.path.exists(path):
         with open(path) as f:
             return json.load(f)
     return None
 
 def load_previous_scout_data(data_dir=DATA_DIR):
-    """Load the pre-season scout data for tier info."""
-    path = os.path.join(data_dir, "full_scout_data.json")
-    if os.path.exists(path):
-        with open(path) as f:
-            data = json.load(f)
-        return {e['entry_id']: e for e in data}
-    return {}
+    """Load pre-season scout data for tier info from scout_report.csv.
+
+    CSV columns include: entry_id, team_name, manager_name, seasons_played,
+    best_rank, scout_score, threat_tier (S/A/B/C/D), archetype.
+    Returns {entry_id: {tier, overall_score, best_rank, seasons, ...}} for ELITE WATCH.
+    """
+    import csv
+    path = os.path.join(data_dir, "scout_report.csv")
+    TIER_MAP = {'S': 'ELITE', 'A': 'SHARP', 'B': 'SOLID', 'C': 'CASUAL', 'D': 'ROOKIE'}
+    result = {}
+    if not os.path.exists(path):
+        print(f"⚠️ scout_report.csv not found: {path}", file=sys.stderr)
+        return result
+    with open(path, encoding='utf-8-sig') as f:
+        for row in csv.DictReader(f):
+            try:
+                eid = int(row['entry_id'])
+            except (ValueError, KeyError):
+                continue
+            result[eid] = {
+                'entry_id': eid,
+                'team_name': row.get('team_name', ''),
+                'manager_name': row.get('manager_name', ''),
+                'tier': TIER_MAP.get(row.get('threat_tier', ''), row.get('threat_tier', '')),
+                'overall_score': row.get('scout_score', '?'),
+                'best_rank': row.get('best_rank', '?'),
+                'seasons': row.get('seasons_played', '?'),
+                'archetype': row.get('archetype', ''),
+                'recent_rank': row.get('recent_rank', '?'),
+                'weighted_percentile': row.get('weighted_percentile', '?'),
+            }
+    print(f"✅ Loaded {len(result)} scout records from CSV", file=sys.stderr)
+    return result
 
 def analyze_squad_ownership(competitors, player_map=None):
     """Analyze which players are most owned across the league."""
@@ -229,12 +255,12 @@ def analyze_formation_distribution(competitors):
         formations[formation] += 1
     return sorted(formations.items(), key=lambda x: -x[1])
 
-def generate_markdown_report(gw, analysis, competitors_full, output_dir):
+def generate_markdown_report(gw, analysis, competitors_full, output_dir, league_id=58005, league_name=None):
     """Generate a comprehensive markdown report."""
     lines = []
-    lines.append(f"# FPL League 58005 — Gameweek {gw} Analysis\n")
+    lines.append(f"# FPL League {league_id} — Gameweek {gw} Analysis\n")
     lines.append(f"> **Report generated:** {datetime.utcnow().strftime('%d %B %Y %H:%M UTC')}")
-    lines.append(f"> **League:** [fantasy.premierleague.com/leagues/58005](https://fantasy.premierleague.com/leagues/58005/standings/c)")
+    lines.append(f"> **League:** {league_name or 'League ' + str(league_id)} — [standings](https://fantasy.premierleague.com/leagues/{league_id}/standings/c)")
     lines.append(f"> **Total competitors analysed:** {analysis['squad_ownership']['total_teams']}\n")
     
     # --- GW Summary ---
@@ -249,7 +275,8 @@ def generate_markdown_report(gw, analysis, competitors_full, output_dir):
     lines.append(f"| Average Squad Cost | £{analysis['squad_ownership']['avg_budget']}m |")
     lines.append(f"| Teams Making Transfers | {analysis['transfers']['teams_with_transfers']} ({analysis['transfers']['pct_transferred']}%) |")
     lines.append(f"| -4pt Hits Taken | {analysis['transfers']['hit_takers']} teams |")
-    lines.append(f"| Total Transfers Made | {analysis['transfers']['total_transfers']} |\n")
+    lines.append(f"| Total Transfers Made | {analysis['transfers']['total_transfers']} |")
+    lines.append(f"| Chips Used (GW{gw}) | {dict(analysis.get('chips', {}))} |\n")
     
     # --- Top 20 ---
     lines.append("---\n")
@@ -397,7 +424,7 @@ def generate_elite_watch_report(gw, competitors, scout_data, output_dir):
                 lines.append(f"  |:---:|:-------|:----:|:----:|:----:|")
                 for s in sorted(comp['squad'], key=lambda x: (POSITION_ORDER.get(x['position'], 99), x.get('position_order', 0))):
                     cap_mark = "🅲" if s['is_captain'] else ("🆅" if s['is_vice_captain'] else "")
-                    status_mark = "⚠️" if s['status'] != 'a' else ""
+                    status_mark = "⚠️" if s.get('status', 'a') != 'a' else ""
                     lines.append(f"  | {s['position']} | {s['name']} {status_mark} | £{s['cost']}m | {s['team']} | {cap_mark} |")
     else:
         lines.append("*No ELITE managers found in this GW data.*")
@@ -530,6 +557,11 @@ def main():
     gw = args.gw
     league_id = args.league
     data_dir = args.data_dir
+    LEAGUE_NAMES = {
+        58005: "LIGA FPL KK OLD BOYS S5",
+        131997: "OVERALL IFE 26/27 [MUSIM KE-7]",
+    }
+    league_name = LEAGUE_NAMES.get(league_id, f"League {league_id}")
     output_dir = os.path.join(args.output_dir, f"GW{gw}")
     os.makedirs(output_dir, exist_ok=True)
 
@@ -566,7 +598,20 @@ def main():
     injuries_data = analyze_injuries(competitors)
     team_clusters = analyze_team_clusters(competitors)
     formations_data = analyze_formation_distribution(competitors)
-    
+
+    # Chips used this GW (from history chips list or active_chip field)
+    chips_counter = Counter()
+    for c in competitors:
+        ch = c.get('chips_used') or []
+        if ch:
+            for chip_ev in ch:
+                chips_counter[chip_ev.get('name', '?')] += 1
+        else:
+            ac = c.get('active_chip', 'none')
+            if ac and ac != 'none':
+                chips_counter[ac] += 1
+    chips_data = dict(chips_counter)
+
     analysis = {
         'squad_ownership': squad_ownership_data,
         'differentials': differentials_data,
@@ -576,34 +621,35 @@ def main():
         'injuries': injuries_data,
         'team_clusters': team_clusters,
         'formations': formations_data,
+        'chips': chips_data,
     }
     
     # Generate reports
     print("📝 Generating reports...")
     
     # Main report
-    main_report = generate_markdown_report(gw, analysis, competitors, output_dir)
-    main_path = os.path.join(output_dir, f"GW{gw}_REPORT.md")
+    main_report = generate_markdown_report(gw, analysis, competitors, output_dir, league_id, league_name)
+    main_path = os.path.join(output_dir, f"GW{gw}_L{league_id}_REPORT.md")
     with open(main_path, 'w') as f:
         f.write(main_report)
     print(f"✅ Main report: {main_path}")
     
     # Elite watch report
     elite_report = generate_elite_watch_report(gw, competitors, scout_data, output_dir)
-    elite_path = os.path.join(output_dir, f"GW{gw}_ELITE_WATCH.md")
+    elite_path = os.path.join(output_dir, f"GW{gw}_L{league_id}_ELITE_WATCH.md")
     with open(elite_path, 'w') as f:
         f.write(elite_report)
     print(f"✅ Elite watch: {elite_path}")
     
     # Strategy report
     strategy_report = generate_competitive_strategy(gw, analysis, competitors, output_dir)
-    strategy_path = os.path.join(output_dir, f"GW{gw}_STRATEGY.md")
+    strategy_path = os.path.join(output_dir, f"GW{gw}_L{league_id}_STRATEGY.md")
     with open(strategy_path, 'w') as f:
         f.write(strategy_report)
     print(f"✅ Strategy: {strategy_path}")
     
     # Save analysis JSON for programmatic use
-    analysis_json_path = os.path.join(output_dir, f"GW{gw}_analysis.json")
+    analysis_json_path = os.path.join(output_dir, f"GW{gw}_L{league_id}_analysis.json")
     # Make it JSON serializable
     analysis_serializable = {
         'gw': gw,
@@ -629,13 +675,15 @@ def main():
         },
         'formations': [{'formation': f, 'count': c} for f, c in formations_data],
         'injuries': injuries_data,
+        'chips': chips_data,
     }
     with open(analysis_json_path, 'w') as f:
         json.dump(analysis_serializable, f, indent=2)
     print(f"✅ Analysis JSON: {analysis_json_path}")
-    
+
     print(f"\n🎉 All reports generated in {output_dir}/")
     return 0
+
 
 if __name__ == '__main__':
     sys.exit(main())
