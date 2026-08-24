@@ -1,0 +1,65 @@
+{
+  "gw2": [
+    {
+      "team_h": "Crystal Palace",
+      "team_a": "Man City",
+      "team_h_difficulty": 4,
+      "team_a_difficulty": 3
+    },
+    {
+      "team_h": "Liverpool",
+      "team_a": "Nott'm Forest",
+      "team_h_difficulty": 3,
+      "team_a_difficulty": 4
+    },
+    {
+      "team_h": "Bournemouth",
+      "team_a": "Everton",
+      "team_h_difficulty": 3,
+      "team_a_difficulty": 3
+    },
+    {
+      "team_h": "Coventry City",
+      "team_a": "Hull City",
+      "team_h_difficulty": 2,
+      "team_a_difficulty": 2
+    },
+    {
+      "team_h": "Spurs",
+      "team_a": "Newcastle",
+      "team_h_difficulty": 2,
+      "team_a_difficulty": 3
+    },
+    {
+      "team_h": "Chelsea",
+      "team_a": "Brighton",
+      "team_h_difficulty": 2,
+      "team_a_difficulty": 4
+    },
+    {
+      "team_h": "Leeds",
+      "team_a": "Brentford",
+      "team_h_difficulty": 3,
+      "team_a_difficulty": 3
+    },
+    {
+      "team_h": "Sunderland",
+      "team_a": "Fulham",
+      "team_h_difficulty": 2,
+      "team_a_difficulty": 3
+    },
+    {
+      "team_h": "Man Utd",
+      "team_a": "Ipswich Town",
+      "team_h_difficulty": 2,
+      "team_a_difficulty": 4
+    },
+    {
+      "team_h": "Aston Villa",
+      "team_a": "Arsenal",
+      "team_h_difficulty": 4,
+      "team_a_difficulty": 4
+    }
+  ],
+  "gw1_results": []
+}
