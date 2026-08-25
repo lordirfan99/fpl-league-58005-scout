@@ -25,6 +25,9 @@
         <button class="nav-item" data-view="compare"><span class="nav-icon">⇄</span><span>Compare Managers</span></button>
         <button class="nav-item" data-view="transfers"><span class="nav-icon">↗</span><span>Transfers & Chips</span></button>
         <button class="nav-item" data-view="myteam"><span class="nav-icon">◆</span><span>My Team vs League</span></button>
+        <div class="nav-divider"></div>
+        <button class="nav-item" data-view="elite"><span class="nav-icon">⬟</span><span>Elite Tracker</span></button>
+        <button class="nav-item" data-view="analytics"><span class="nav-icon">◈</span><span>Analytics</span></button>
       </nav>
       <div class="sidebar-foot"><span>DATA ENGINE</span><strong>4 LEAGUES · GW SNAPSHOTS</strong><small>Repository-backed analytics</small></div>
     </aside>
@@ -74,7 +77,11 @@
       <section id="transfers" class="view"><div class="grid two"><article class="panel"><div class="panel-head"><div><span class="panel-kicker">ACTIVITY</span><h2>Transfer Intelligence</h2></div><span class="panel-tag">MOVES</span></div><div id="transferIntel"></div></article><article class="panel"><div class="panel-head"><div><span class="panel-kicker">STRATEGY</span><h2>Chip Tracker</h2></div><span class="panel-tag">THIS GW</span></div><div id="chipTracker"></div></article></div></section>
 
       <section id="myteam" class="view"><article class="panel"><div class="panel-head responsive"><div><span class="panel-kicker">PERSONAL SCOUT</span><h2>My Team vs League</h2><p>Find your differentials and the managers whose squads mirror yours.</p></div><select id="myTeamSelect"></select></div><div id="myTeamResult"></div></article></section>
-    </main>
+
+            <section id="elite" class="view"><div id="eliteContent"></div></section>
+
+            <section id="analytics" class="view"><div id="analyticsContent"></div></section>
+          </main>
   </div>
 
   <dialog id="managerDialog"><div class="dialog-head"><div><span class="panel-kicker">MANAGER DETAIL</span><h2 id="dialogTitle"></h2><p id="dialogSub"></p></div><button id="closeDialog" aria-label="Close">×</button></div><div id="dialogContent"></div></dialog>
