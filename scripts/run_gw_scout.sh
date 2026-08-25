@@ -66,3 +66,17 @@ echo "=== GW${GW} Pipeline Complete ==="
 echo "Finished: $(date -u)"
 echo "Data: data/gw${GW}_league{58005,131997}_data.json"
 echo "Reports: reports/GW${GW}/"
+
+# Step 3: Commit and push to GitHub
+echo "--- Committing to GitHub ---"
+git add -A
+git commit -m "chore: GW${GW} scout data + analysis" || echo "Nothing new to commit"
+git push origin master
+PUSH_EXIT=$?
+if [ $PUSH_EXIT -eq 0 ]; then
+    echo "✅ Pushed to GitHub — Netlify auto-deploy should trigger"
+else
+    echo "⚠️ Push failed (exit $PUSH_EXIT). Check git remote config."
+fi
+
+echo "=== GW${GW} Pipeline Fully Complete ==="
