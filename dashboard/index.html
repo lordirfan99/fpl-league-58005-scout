@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="theme-color" content="#07110d"/>
+  <title>Scout Intelligence · FPL 2026/27</title>
+  <link rel="stylesheet" href="./styles.css"/>
+</head>
+<body>
+  <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">SI</div>
+        <div><strong>Scout Intelligence</strong><span>FPL LEAGUE LAB</span></div>
+      </div>
+      <div class="season-chip"><span class="live-dot"></span>2026/27 LIVE</div>
+      <nav id="nav">
+        <button class="nav-item active" data-view="overview"><span class="nav-icon">⌂</span><span>Overview</span></button>
+        <button class="nav-item" data-view="league"><span class="nav-icon">≡</span><span>League Explorer</span></button>
+        <button class="nav-item" data-view="players"><span class="nav-icon">◈</span><span>Player Intelligence</span></button>
+        <button class="nav-item" data-view="managers"><span class="nav-icon">◎</span><span>Manager Explorer</span></button>
+        <div class="nav-divider"></div>
+        <button class="nav-item" data-view="compare"><span class="nav-icon">⇄</span><span>Compare Managers</span></button>
+        <button class="nav-item" data-view="transfers"><span class="nav-icon">↗</span><span>Transfers & Chips</span></button>
+        <button class="nav-item" data-view="myteam"><span class="nav-icon">◆</span><span>My Team vs League</span></button>
+      </nav>
+      <div class="sidebar-foot"><span>DATA ENGINE</span><strong>4 LEAGUES · GW SNAPSHOTS</strong><small>Repository-backed analytics</small></div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div class="title-wrap">
+          <div class="eyebrow"><span class="live-dot"></span>LEAGUE INTELLIGENCE</div>
+          <h1 id="pageTitle">Overview</h1>
+          <p id="statusText">Discovering available gameweeks…</p>
+        </div>
+        <div class="controls-wrap">
+          <div class="controls">
+            <label><span>League</span><select id="leagueSelect"></select></label>
+            <label><span>Gameweek</span><select id="gwSelect"></select></label>
+          </div>
+        </div>
+      </header>
+
+      <section id="overview" class="view active">
+        <div class="hero-strip">
+          <div><span class="hero-kicker">SCOUT CONTROL ROOM</span><h2>Read the league before the league reads you.</h2><p>Captaincy pressure, rank movement, template structure and manager behaviour — all in one view.</p></div>
+          <div class="hero-orbit"><div class="orbit-core">FPL</div><div class="orbit-ring"></div></div>
+        </div>
+        <div id="kpis" class="kpi-grid"></div>
+        <div class="grid two emphasis-grid">
+          <article class="panel panel-feature"><div class="panel-head"><div><span class="panel-kicker">PERFORMANCE</span><h2>Top GW Performers</h2></div><span class="panel-tag">TOP 10</span></div><div id="topPerformers"></div></article>
+          <article class="panel"><div class="panel-head"><div><span class="panel-kicker">META</span><h2>Captaincy Pressure</h2></div><span class="panel-tag">LEAGUE</span></div><div id="captainBars"></div></article>
+        </div>
+        <div class="grid two">
+          <article class="panel"><div class="panel-head"><div><span class="panel-kicker">STRUCTURE</span><h2>Template XI</h2></div><span class="panel-tag">MOST OWNED</span></div><div id="templateXI" class="template-grid"></div></article>
+          <article class="panel"><div class="panel-head"><div><span class="panel-kicker">MOMENTUM</span><h2>Rank Movers</h2></div><span class="panel-tag">Δ RANK</span></div><div id="rankMovers"></div></article>
+        </div>
+        <article class="panel panel-chart"><div class="panel-head"><div><span class="panel-kicker">DISTRIBUTION</span><h2>Points Landscape</h2></div><span id="distMeta" class="panel-tag"></span></div><div id="distribution" class="distribution"></div></article>
+      </section>
+
+      <section id="league" class="view">
+        <article class="panel panel-table"><div class="panel-head responsive"><div><span class="panel-kicker">STANDINGS</span><h2>League Explorer</h2><p>Search, sort and drill into every manager.</p></div><input id="leagueSearch" class="search" placeholder="Search manager or team…"/></div><div class="table-wrap"><table><thead><tr><th data-sort="league_rank">Rank</th><th>Move</th><th data-sort="entry_name">Team</th><th data-sort="player_name">Manager</th><th data-sort="gw_points">GW</th><th data-sort="total_points">Total</th><th data-sort="captain">Captain</th><th data-sort="transfers_made">Transfers</th></tr></thead><tbody id="leagueBody"></tbody></table></div></article>
+      </section>
+
+      <section id="players" class="view"><article class="panel panel-table"><div class="panel-head responsive"><div><span class="panel-kicker">MARKET MAP</span><h2>Player Intelligence</h2><p>Ownership, captaincy and differential signal inside the selected league.</p></div><input id="playerSearch" class="search" placeholder="Search player…"/></div><div id="playerLoading" class="empty"></div><div class="table-wrap"><table><thead><tr><th>Player</th><th>Team</th><th>Pos</th><th>Owned</th><th>Ownership</th><th>Captain</th><th>Captaincy</th><th>Differential</th><th>Form</th></tr></thead><tbody id="playerBody"></tbody></table></div></article></section>
+
+      <section id="managers" class="view"><article class="panel"><div class="panel-head responsive"><div><span class="panel-kicker">MANAGER MAP</span><h2>Manager Explorer</h2><p>Open a manager to inspect squad structure, captaincy and value.</p></div><input id="managerSearch" class="search" placeholder="Search manager or team…"/></div><div id="managerCards" class="manager-grid"></div></article></section>
+
+      <section id="compare" class="view"><article class="panel"><div class="panel-head responsive"><div><span class="panel-kicker">HEAD TO HEAD</span><h2>Compare Managers</h2><p>Squad overlap, unique picks and gameweek separation.</p></div><div class="compare-controls"><select id="compareA"></select><span class="vs">VS</span><select id="compareB"></select></div></div><div id="compareResult"></div></article></section>
+
+      <section id="transfers" class="view"><div class="grid two"><article class="panel"><div class="panel-head"><div><span class="panel-kicker">ACTIVITY</span><h2>Transfer Intelligence</h2></div><span class="panel-tag">MOVES</span></div><div id="transferIntel"></div></article><article class="panel"><div class="panel-head"><div><span class="panel-kicker">STRATEGY</span><h2>Chip Tracker</h2></div><span class="panel-tag">THIS GW</span></div><div id="chipTracker"></div></article></div></section>
+
+      <section id="myteam" class="view"><article class="panel"><div class="panel-head responsive"><div><span class="panel-kicker">PERSONAL SCOUT</span><h2>My Team vs League</h2><p>Find your differentials and the managers whose squads mirror yours.</p></div><select id="myTeamSelect"></select></div><div id="myTeamResult"></div></article></section>
+    </main>
+  </div>
+
+  <dialog id="managerDialog"><div class="dialog-head"><div><span class="panel-kicker">MANAGER DETAIL</span><h2 id="dialogTitle"></h2><p id="dialogSub"></p></div><button id="closeDialog" aria-label="Close">×</button></div><div id="dialogContent"></div></dialog>
+  <script src="./app.js"></script>
+</body>
+</html>
