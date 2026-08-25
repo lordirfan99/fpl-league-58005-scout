@@ -1,48 +1,131 @@
 # FPL Scout Intelligence Dashboard
 
-A lightweight zero-backend dashboard for the repository's weekly FPL scouting snapshots.
+> **Live at:** https://fpl-scout-intelligence.netlify.app
+> **Part of:** https://github.com/lordirfan99/fpl-league-58005-scout
+
+A lightweight, zero-backend dashboard for FPL league scouting. No build step, no database — just HTML, CSS, and JavaScript that reads JSON data files.
+
+---
 
 ## Features
 
-- Overview KPIs, points distribution, top performers and captaincy meta
-- Rank movement indicators using current vs previous league rank
-- Template XI derived from league ownership
-- League Explorer with sorting, search and manager drill-down
-- Player Intelligence with ownership, captaincy and differential classification
-- Manager Explorer with squad detail
-- Manager-vs-manager comparison with squad overlap and unique picks
-- Transfer Intelligence for common moves
-- Chip usage tracker
-- My Team vs League view with strongest differentials and most similar managers
-- Automatic discovery of available GW1-GW38 snapshots
-- Support for leagues 19292, 58005, 687126 and 131997
+### 9 Dashboard Views
 
-## Data contract
+| View | Description |
+|:-----|:------------|
+| **Overview** | KPIs, top 10 performers, captaincy bar chart, points distribution, template XI, rank movers |
+| **League Explorer** | Full standings table, searchable, sortable by any column |
+| **Player Intelligence** | Every player's ownership %, captaincy %, differential classification |
+| **Manager Explorer** | Card grid of all managers — click to see full squad, captain, vice, value |
+| **Compare Managers** | Pick 2 managers → see squad overlap, unique picks, shared players |
+| **Transfers & Chips** | Most common transfers, chip usage tracker with pie chart |
+| **My Team vs League** | Your differentials (lowest-owned players) and most similar managers |
+| **Elite Tracker** | Top 5% managers by overall rank — elite picks, lineup grid, transfers, chips |
+| **Analytics** | Squad cost distribution, formation trends, ownership saturation |
 
-Fast navigation reads:
+### Features
+- **League selector** — Switch between 4 leagues (names shown, not IDs)
+- **GW selector** — Browse any available gameweek data
+- **Dark theme** — Premium dark green/black design
+- **Mobile responsive** — Bottom nav bar, scrollable tables, compact for Poco X8 Pro Max (1280×2772)
+- **Animations** — Fade-in, grow bars, hover effects, freshness badge
+- **Data freshness** — Shows "just now" / "45m ago" / "2h ago" next to data timestamp
 
-`data/gw{GW}_league{LEAGUE}_compact.json`
+---
 
-Deep scouting views lazily load:
+## Files
 
-`data/gw{GW}_league{LEAGUE}_data.json`
+| File | Purpose |
+|:-----|:--------|
+| `index.html` | Main HTML page (dark theme, sidebar navigation, 9 view sections) |
+| `app.js` | Single-file JavaScript app (30KB, all logic in one file) |
+| `styles.css` | Styling: base + animations + elite tracker + charts + mobile responsive |
 
-The dashboard therefore stays responsive while preserving access to full squad, transfer and chip information.
+---
 
-## Run locally
+## Data Contract
 
-Serve the repository root through any static HTTP server. Example:
+The dashboard reads two JSON files per league per gameweek:
 
-```bash
-python -m http.server 8080
+### Compact JSON (fast overview)
 ```
+data/gw{N}_league{L}_compact.json
+```
+Used for: Overview, League Explorer, Manager Explorer, all KPIs.
 
-Then open `/dashboard/`.
+### Full Data JSON (deep scouting)
+```
+data/gw{N}_league{L}_data.json
+```
+Used for: Player Intelligence, Compare, Transfers, My Team, Elite Tracker, Analytics.
+Lazy-loaded only when the user opens those views.
 
-Do not open `index.html` directly through `file://`, because the browser must fetch the JSON snapshots over HTTP.
+### Supported Leagues
+
+| ID | Name |
+|:---|:-----|
+| 19292 | LIGA KOPAK |
+| 58005 | LIGA FPL KK OLD BOYS |
+| 687126 | LIGA FPL MALAYSIA |
+| 131997 | OVERALL IFE |
+
+---
+
+## How to Modify
+
+### Adding a new view
+1. Add a nav button in `index.html` inside `<nav id="nav">`
+2. Add a `<section id="yourview" class="view">` element in index.html
+3. Add a render function in `app.js` (e.g., `renderYourView()`)
+4. Wire it up in the nav click handler and `load()` function
+5. Add CSS in `styles.css`
+
+### Changing styles
+- **Desktop:** Lines 1-84 of `styles.css` (base CSS)
+- **Mobile:** Lines 86+ of `styles.css` (inside `@media(max-width:1000px)` and `@media(max-width:500px)`)
+
+### Adding leagues
+1. Edit `LEAGUES` array in `app.js` (line 1-6)
+2. Ensure data files exist: `data/gw{N}_league{ID}_compact.json` and `data/gw{N}_league{ID}_data.json`
+
+---
 
 ## Deployment
 
-The repository includes `vercel.json` so the root URL rewrites to the dashboard while `/data/*` remains available to the browser.
+### Netlify (current)
+Deployed via manual zip upload using Netlify API. Requires:
+- `index.html`, `app.js`, `styles.css`
+- `data/gw1_league*.json` (GW data)
+- `_redirects` — must contain ONLY `/ /index.html 200` (NOT `/* /index.html 200`)
+- `_headers` — forces `Content-Type: application/json` for `/data/*`
 
-No database or application server is required. When the GW pipeline commits a new snapshot, a normal Vercel deployment will expose it automatically.
+### Vercel (alternative)
+`vercel.json` in repo root rewrites `/` → `/dashboard/index.html`. Not currently deployed.
+
+### Run Locally
+```bash
+python -m http.server 8080
+# Open http://localhost:8080/dashboard/
+```
+
+---
+
+## Known Issues
+
+- **Leagues 19292 and 687126** have no data files yet — they'll show as unavailable
+- **Elite Grid** shows 20×20 matrix — scroll horizontally on mobile
+- **Data files must be deployed together** with the dashboard HTML/JS/CSS
+- **Do NOT use `/* /index.html 200` in `_redirects`** — it breaks JSON file serving
+
+---
+
+## Recent Changes (25 Aug 2026)
+
+- Fixed: JSON files returning HTML instead of JSON (`_redirects` catch-all removed)
+- Added: Elite Tracker (top 5% managers, lineup grid, elite picks vs league)
+- Added: Analytics (squad cost histogram, formation distribution, ownership)
+- Added: Chip pie chart visual
+- Added: Mobile responsive design (bottom nav, scrollable tables, compact)
+- Added: League names instead of IDs
+- Added: Animations, freshness badge, scroll-to-top button
+- Fixed: GW discovery scanning 1-38 → 1-5 (stops at first 404)
