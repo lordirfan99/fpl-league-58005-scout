@@ -1,41 +1,48 @@
 # FPL Scout Intelligence Dashboard
 
-A zero-backend navigable dashboard for the repository's gameweek snapshots.
+A lightweight zero-backend dashboard for the repository's weekly FPL scouting snapshots.
 
-## What it reads
+## Features
 
-The app automatically probes for:
+- Overview KPIs, points distribution, top performers and captaincy meta
+- Rank movement indicators using current vs previous league rank
+- Template XI derived from league ownership
+- League Explorer with sorting, search and manager drill-down
+- Player Intelligence with ownership, captaincy and differential classification
+- Manager Explorer with squad detail
+- Manager-vs-manager comparison with squad overlap and unique picks
+- Transfer Intelligence for common moves
+- Chip usage tracker
+- My Team vs League view with strongest differentials and most similar managers
+- Automatic discovery of available GW1-GW38 snapshots
+- Support for leagues 19292, 58005, 687126 and 131997
 
-- `data/gw{n}_league{league}_compact.json`
-- `data/gw{n}_league{league}_data.json`
+## Data contract
 
-Tracked leagues: `19292`, `58005`, `687126`, `131997`.
+Fast navigation reads:
 
-Compact files drive the fast overview, leaderboard and manager search. Full files are loaded only when player intelligence or an individual squad is opened.
+`data/gw{GW}_league{LEAGUE}_compact.json`
 
-## Views
+Deep scouting views lazily load:
 
-- **Overview** — manager count, average/median GW score, top score, top captain, captaincy meta and points distribution.
-- **League Explorer** — searchable/sortable league table.
-- **Player Intelligence** — league-specific ownership and captaincy derived from every manager squad.
-- **Manager Explorer** — manager cards and squad drill-down.
+`data/gw{GW}_league{LEAGUE}_data.json`
 
-## Local preview
+The dashboard therefore stays responsive while preserving access to full squad, transfer and chip information.
 
-Run a static server from the repository root so the dashboard can access `../data/`:
+## Run locally
+
+Serve the repository root through any static HTTP server. Example:
 
 ```bash
-python -m http.server 8000
+python -m http.server 8080
 ```
 
-Then open `http://localhost:8000/dashboard/`.
+Then open `/dashboard/`.
 
-Do not open `dashboard/index.html` directly with `file://`; browser fetch security will block JSON loading.
+Do not open `index.html` directly through `file://`, because the browser must fetch the JSON snapshots over HTTP.
 
-## Vercel
+## Deployment
 
-`vercel.json` rewrites `/` to the dashboard entry. Deploy the repository root as a static project. The repository `data/` directory remains addressable by the dashboard.
+The repository includes `vercel.json` so the root URL rewrites to the dashboard while `/data/*` remains available to the browser.
 
-## Data lifecycle
-
-No dashboard code change is required for later gameweeks. When the pipeline commits new `gw{n}_league{league}_compact.json` and full JSON snapshots, the dashboard discovers the new gameweek automatically.
+No database or application server is required. When the GW pipeline commits a new snapshot, a normal Vercel deployment will expose it automatically.
