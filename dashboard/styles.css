@@ -81,3 +81,100 @@
 .pie-track{height:8px;border-radius:4px;background:var(--panel2);overflow:hidden;display:flex}
 .pie-seg{height:100%;transition:width .3s}
 .pie-fills{display:flex;width:100%;height:100%}
+
+
+/* === Poco X8 Pro Max (1280x2772) & General Mobile === */
+@media(max-width:900px){
+  .app-shell{grid-template-columns:1fr}
+  .sidebar{position:fixed;bottom:0;top:auto;left:0;right:0;height:auto;z-index:100;flex-direction:row;padding:8px 10px;gap:4px;border-right:none;border-top:1px solid var(--line);overflow-x:auto;backdrop-filter:blur(20px);background:rgba(5,14,10,.92)}
+  .sidebar .brand{display:none}
+  .sidebar .season-chip{display:none}
+  .sidebar .sidebar-foot{display:none}
+  .sidebar nav{display:flex;flex-direction:row;gap:2px;width:100%;overflow-x:auto}
+  .sidebar .nav-item{flex:0 0 auto;padding:6px 10px;border-radius:8px;font-size:10px;white-space:nowrap;gap:4px;border:1px solid transparent}
+  .sidebar .nav-item .nav-icon{font-size:14px}
+  .sidebar .nav-divider{display:none}
+  .sidebar .nav-item.active{border-color:var(--line2);background:rgba(128,255,178,.08)}
+  main{padding-bottom:70px}
+  .topbar{flex-direction:column;gap:8px;padding:12px 14px}
+  .topbar .controls-wrap{width:100%}
+  .topbar .controls{flex-direction:row;width:100%;gap:8px}
+  .topbar .controls label{flex:1}
+  .topbar .controls select{width:100%;font-size:12px;padding:6px 8px}
+  .topbar .title-wrap h1{font-size:16px}
+  .topbar .title-wrap p{font-size:11px}
+  .hero-strip{flex-direction:column;gap:8px;padding:16px}
+  .hero-strip h2{font-size:18px}
+  .hero-orbit{display:none}
+  .kpi-grid{grid-template-columns:repeat(2,1fr);gap:8px;padding:0 14px}
+  .kpi{padding:10px 12px}
+  .kpi strong{font-size:18px}
+  .kpi small{font-size:9px}
+  .grid.two{grid-template-columns:1fr}
+  .panel{padding:12px}
+  .panel-head h2{font-size:14px}
+  .panel-head p{font-size:11px}
+  .panel-tag{font-size:8px;padding:2px 6px}
+  .panel-kicker{font-size:8px}
+  .table-wrap{overflow-x:auto}
+  table{font-size:10px}
+  table th,table td{padding:4px 6px}
+  .search{font-size:12px;padding:6px 10px}
+  .manager-grid{grid-template-columns:repeat(2,1fr);gap:8px}
+  .manager-card{padding:10px}
+  .squad-grid{grid-template-columns:repeat(2,1fr);gap:6px}
+  .squad-card{padding:8px}
+  .squad-card strong{font-size:11px}
+  .squad-card span{font-size:9px}
+  .mini-kpis{grid-template-columns:repeat(2,1fr)!important;gap:8px}
+  .mini-kpi{padding:8px}
+  .mini-kpi strong{font-size:14px}
+  .mini-kpi span{font-size:9px}
+  .compare-grid{grid-template-columns:1fr;gap:12px}
+  .compare-controls{flex-direction:column;gap:6px}
+  .compare-controls select{width:100%}
+  .vs{font-size:12px;text-align:center}
+  .rank-row{padding:8px 10px;font-size:11px}
+  .rank-num{width:22px;height:22px;font-size:10px}
+  .template-grid{grid-template-columns:repeat(2,1fr);gap:6px}
+  .template-card{padding:8px}
+  .template-card strong{font-size:11px}
+  .template-card span{font-size:9px}
+  .template-card small{font-size:8px}
+  .distribution{height:80px;gap:3px;padding:8px 0}
+  .hist-bar{min-width:4px;border-radius:3px 3px 0 0}
+  .elite-mini-kpis{grid-template-columns:repeat(2,1fr)!important;gap:8px}
+  .elite-manager-list{max-height:250px}
+  .elite-pick-row{flex-direction:column;align-items:flex-start;gap:4px}
+  .elite-pick-stats{flex-wrap:wrap}
+  .elite-grid{font-size:8px}
+  .elite-grid th,.elite-grid td{padding:2px 3px}
+  .elite-player-name{min-width:60px}
+  .elite-player-name strong{font-size:9px}
+  .elite-cell{width:18px;height:18px;font-size:8px}
+  .chart-bar-container{height:100px}
+  .chart-bar-label{font-size:7px}
+  .hero-kicker{font-size:9px}
+  .eyebrow{font-size:9px}
+  .live-dot{width:5px;height:5px}
+  .freshness-badge{font-size:8px;padding:1px 4px}
+  dialog{padding:14px;max-width:95vw;margin:10px auto}
+  .dialog-head h2{font-size:15px}
+  .dialog-head p{font-size:11px}
+  .ambient-a{width:200px;height:200px;right:-60px;top:60px}
+  .ambient-b{width:180px;height:180px;left:10%;bottom:-100px}
+}
+
+@media(max-width:500px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr);gap:6px;padding:0 10px}
+  .kpi{padding:8px 10px}
+  .kpi strong{font-size:15px}
+  .manager-grid{grid-template-columns:1fr}
+  .squad-grid{grid-template-columns:1fr}
+  .template-grid{grid-template-columns:1fr}
+  .sidebar nav{gap:1px}
+  .sidebar .nav-item{padding:5px 8px;font-size:9px}
+  .mini-kpis{grid-template-columns:1fr 1fr!important}
+  .elite-mini-kpis{grid-template-columns:1fr 1fr!important}
+  .controls{flex-direction:column!important}
+}
