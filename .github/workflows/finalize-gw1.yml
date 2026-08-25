@@ -1,0 +1,74 @@
+name: Finalize GW1 Data
+
+on:
+  push:
+    branches:
+      - update/gw1-final-2026-08-25
+    paths:
+      - '.github/workflows/finalize-gw1.yml'
+      - 'scripts/fetch_gw_data_fixed.py'
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-gw1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: update/gw1-final-2026-08-25
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Fetch final GW1 data
+        run: |
+          python scripts/fetch_gw_data_fixed.py --gw 1 --league 58005 131997 --max 3000
+
+      - name: Generate GW1 reports
+        run: |
+          python scripts/generate_analysis.py --gw 1 --league 58005
+          python scripts/generate_analysis.py --gw 1 --league 131997
+
+      - name: Validate generated datasets
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          for lid in (58005, 131997):
+              p = Path(f'data/gw1_league{lid}_data.json')
+              c = Path(f'data/gw1_league{lid}_compact.json')
+              assert p.exists(), p
+              assert c.exists(), c
+              full = json.loads(p.read_text())
+              compact = json.loads(c.read_text())
+              assert full['gw'] == 1
+              assert compact['gw'] == 1
+              assert full['league_id'] == lid
+              assert full['total_entries'] == len(full['competitors'])
+              assert compact['total_entries'] == len(compact['competitors'])
+              assert full['total_entries'] > 0
+              print(lid, full['total_entries'], 'entries', 'errors=', full.get('errors', 0))
+          PY
+
+      - name: Commit refreshed GW1 snapshot
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/gw1_league58005_data.json \
+                  data/gw1_league58005_compact.json \
+                  data/gw1_league131997_data.json \
+                  data/gw1_league131997_compact.json \
+                  reports/GW1
+          if git diff --cached --quiet; then
+            echo 'No GW1 data changes to commit.'
+          else
+            git commit -m 'data: finalize GW1 live snapshot and reports'
+            git push origin HEAD:update/gw1-final-2026-08-25
+          fi
