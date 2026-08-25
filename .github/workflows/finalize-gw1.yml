@@ -8,6 +8,10 @@ on:
       - '.github/workflows/finalize-gw1.yml'
       - 'scripts/fetch_gw_data_fixed.py'
 
+concurrency:
+  group: finalize-gw1-update
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
@@ -29,7 +33,7 @@ jobs:
 
       - name: Fetch final GW1 data
         run: |
-          python scripts/fetch_gw_data_fixed.py --gw 1 --league 58005 131997 --max 3000
+          python scripts/fetch_gw_data_fixed.py --gw 1 --league 58005 131997 --max 3000 --workers 16
 
       - name: Generate GW1 reports
         run: |
