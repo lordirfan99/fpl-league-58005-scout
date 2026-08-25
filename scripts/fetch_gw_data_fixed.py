@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
-"""Corrected multi-league GW fetcher.
+"""Corrected and faster multi-league GW fetcher.
 
-Fixes two issues in the original fetcher:
-1. Managers appearing in more than one tracked league are retained in every league.
-2. Transfers are fetched from /entry/{id}/transfers/ and filtered by gameweek.
-
-The expensive per-manager API calls are cached in-memory, so overlapping managers are
-only fetched once and then projected into each league's standings context.
+Fixes:
+1. Managers appearing in multiple tracked leagues are retained in every league.
+2. Transfers use /entry/{id}/transfers/ and are filtered by gameweek.
+3. Unique manager snapshots are fetched concurrently with bounded workers.
 """
 
 import argparse
@@ -15,6 +13,7 @@ import json
 import os
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import fetch_gw_data as base
 
@@ -31,16 +30,16 @@ def get_entry_transfers_fixed(entry_id, gw):
     return {"transfers": [t for t in transfers if t.get("event") == gw]}
 
 
-# Patch the helper used inside base.fetch_competitor_data.
 base.get_entry_transfers = get_entry_transfers_fixed
 
 
 def write_outputs(gw, league_id, competitors, errors):
+    fetched_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     full_path = os.path.join(DATA_DIR, f"gw{gw}_league{league_id}_data.json")
     payload = {
         "gw": gw,
         "league_id": league_id,
-        "fetched_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "fetched_at": fetched_at,
         "total_entries": len(competitors),
         "errors": errors,
         "competitors": competitors,
@@ -52,7 +51,7 @@ def write_outputs(gw, league_id, competitors, errors):
     compact = {
         "gw": gw,
         "league_id": league_id,
-        "fetched_at": payload["fetched_at"],
+        "fetched_at": fetched_at,
         "total_entries": len(competitors),
         "competitors": [
             {
@@ -77,8 +76,14 @@ def write_outputs(gw, league_id, competitors, errors):
     }
     with open(compact_path, "w") as f:
         json.dump(compact, f, indent=2)
-
     print(f"League {league_id}: {len(competitors)} competitors -> {full_path}", file=sys.stderr)
+
+
+def fetch_one(entry_id, gw, player_map):
+    try:
+        return entry_id, base.fetch_competitor_data(entry_id, gw, player_map), None
+    except Exception as exc:
+        return entry_id, {"entry_id": entry_id, "gw": gw, "fetch_error": str(exc)}, str(exc)
 
 
 def main():
@@ -86,6 +91,7 @@ def main():
     parser.add_argument("--gw", type=int, required=True)
     parser.add_argument("--league", type=int, nargs="+", default=[58005, 131997])
     parser.add_argument("--max", type=int, default=3000)
+    parser.add_argument("--workers", type=int, default=16)
     args = parser.parse_args()
 
     os.makedirs(DATA_DIR, exist_ok=True)
@@ -117,22 +123,23 @@ def main():
         all_entry_ids.update(s["entry_id"] for s in standings if s.get("entry_id"))
         print(f"League {league_id}: {len(standings)} standings entries", file=sys.stderr)
 
-    # Fetch each unique manager once.
+    ids = sorted(all_entry_ids)
     cache = {}
     errors = 0
-    ids = sorted(all_entry_ids)
-    for i, entry_id in enumerate(ids, 1):
-        try:
-            cache[entry_id] = base.fetch_competitor_data(entry_id, args.gw, player_map)
-        except Exception as exc:
-            errors += 1
-            print(f"Failed entry {entry_id}: {exc}", file=sys.stderr)
-            cache[entry_id] = {"entry_id": entry_id, "gw": args.gw, "fetch_error": str(exc)}
-        if i % 50 == 0:
-            print(f"Fetched {i}/{len(ids)} unique managers (errors={errors})", file=sys.stderr)
-        time.sleep(0.15)
+    workers = max(1, min(args.workers, 24))
+    print(f"Fetching {len(ids)} unique managers with {workers} workers", file=sys.stderr)
 
-    # Project the cached manager snapshot into EVERY league membership.
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = [pool.submit(fetch_one, entry_id, args.gw, player_map) for entry_id in ids]
+        for i, future in enumerate(as_completed(futures), 1):
+            entry_id, data, error = future.result()
+            cache[entry_id] = data
+            if error:
+                errors += 1
+                print(f"Failed entry {entry_id}: {error}", file=sys.stderr)
+            if i % 100 == 0 or i == len(ids):
+                print(f"Fetched {i}/{len(ids)} unique managers (errors={errors})", file=sys.stderr)
+
     for league_id, standings in standings_by_league.items():
         competitors = []
         for standing in standings:
