@@ -55,7 +55,7 @@ export async function getLeagueData(leagueId = DEFAULT_LEAGUE_ID, gameweek?: num
 async function getLeagueDataFromApi(leagueId: number, gameweek?: number): Promise<LeagueDashboardData> {
   type IdentityPayload = { current_gameweek: number };
   type TeamPayload = { meta: { generated_at?: string; snapshot_at?: string }; manager: Manager; fixtures: Fixture[] };
-  type LeaguePayload = { managers: Manager[] };
+  type LeaguePayload = { meta?: { generated_at?: string; snapshot_at?: string }; managers: Manager[] };
   type CatalogPayload = { players: Bootstrap["elements"]; teams: Bootstrap["teams"]; events: Bootstrap["events"] };
   const request = async <T>(path: string) => {
     const response = await fetch(`${API_BASE}${path}`, { cache: "no-store" });
@@ -63,8 +63,12 @@ async function getLeagueDataFromApi(leagueId: number, gameweek?: number): Promis
     return response.json() as Promise<T>;
   };
   const resolvedGameweek = gameweek ?? (await request<IdentityPayload>("/v1/me")).current_gameweek ?? DEFAULT_GAMEWEEK;
+  // A league-analysis page must work even when the configured team is not a
+  // member of the selected league (for example the public prize league).
+  // Treat the personal-team lookup as optional; the league snapshot remains
+  // the source of truth for elite/cohort pages.
   const [team, league, catalog] = await Promise.all([
-    request<TeamPayload>(`/v1/me/team?league_id=${leagueId}&gw=${resolvedGameweek}`),
+    request<TeamPayload>(`/v1/me/team?league_id=${leagueId}&gw=${resolvedGameweek}`).catch(() => null),
     request<LeaguePayload>(`/v1/leagues/${leagueId}?gw=${resolvedGameweek}`),
     request<CatalogPayload>("/v1/catalog"),
   ]);
@@ -72,10 +76,10 @@ async function getLeagueDataFromApi(leagueId: number, gameweek?: number): Promis
     manager: league.managers.find((entry) => entry.entry_id === MY_TEAM_ID),
     managers: league.managers,
     bootstrap: { elements: catalog.players, teams: catalog.teams, events: catalog.events },
-    fixture: team.fixtures,
+    fixture: team?.fixtures ?? [],
     gameweek: resolvedGameweek,
     leagueId,
-    fetchedAt: team.meta.snapshot_at ?? team.meta.generated_at,
+    fetchedAt: team?.meta.snapshot_at ?? team?.meta.generated_at ?? league.meta?.snapshot_at ?? league.meta?.generated_at,
   };
 }
 
