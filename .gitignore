@@ -1,3 +1,11 @@
 __pycache__/
 *.py[cod]
 .venv/
+web-next/.next/
+web-next/node_modules/
+web-next/*.tsbuildinfo
+services/api/.venv/
+services/api/.pytest_cache/
+services/api/**/__pycache__/
+.netlify/
+.netlify-deploy-*/

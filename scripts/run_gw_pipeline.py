@@ -36,16 +36,23 @@ LEAGUE_NAMES = {
 
 
 def detect_latest_gw():
-    """Detect the latest finished GW from the FPL API."""
+    """Detect the latest fully checked GW from the FPL API."""
     import urllib.request
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
     req = urllib.request.Request('https://fantasy.premierleague.com/api/bootstrap-static/', headers=headers)
     resp = urllib.request.urlopen(req, timeout=15)
     data = json.loads(resp.read().decode())
 
-    for e in data.get('events', []):
-        if e.get('finished'):
-            return e['id']
+    checked = [
+        e['id'] for e in data.get('events', [])
+        if e.get('finished') and e.get('data_checked')
+    ]
+    if checked:
+        return max(checked)
+
+    finished = [e['id'] for e in data.get('events', []) if e.get('finished')]
+    if finished:
+        return max(finished)
 
     now = time.time()
     last_gw = 0

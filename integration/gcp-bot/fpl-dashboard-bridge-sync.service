@@ -1,0 +1,13 @@
+[Unit]
+Description=Update the FPL dashboard bridge from the reviewed master branch
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+Environment=FPL_BRIDGE_SOURCE_URL=https://raw.githubusercontent.com/lordirfan99/fpl-league-58005-scout/master/integration/gcp-bot/dashboard_bridge.py
+ExecStart=/usr/local/sbin/fpl-dashboard-bridge-sync
+TimeoutStartSec=90
+

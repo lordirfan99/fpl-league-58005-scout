@@ -1,0 +1,30 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --file=services/api/Dockerfile
+      - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scout-api:$BUILD_ID
+      - .
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scout-api:$BUILD_ID
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - fpl-scout-api
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scout-api:$BUILD_ID
+      - --region=${_REGION}
+      - --platform=managed
+      - --allow-unauthenticated
+      - --set-env-vars=FPL_MY_TEAM_ID=2797967,FPL_DEFAULT_LEAGUE_ID=58005,FPL_AUTOPILOT_BASE_URL=https://sportmania.duckdns.org/fpl-autopilot
+      - --set-secrets=FPL_AUTOPILOT_TOKEN=fpl-dashboard-read-token:latest
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scout-api:$BUILD_ID
+substitutions:
+  _REGION: us-central1
+  _REPOSITORY: fpl-scout
+options:
+  logging: CLOUD_LOGGING_ONLY

@@ -1,0 +1,7 @@
+import { PageHeader } from "@/components/page-header";
+import { getDashboardData } from "@/lib/data";
+
+export default async function PlayersPage() {
+  const data = await getDashboardData(), teams = new Map(data.bootstrap.teams.map((team) => [team.id, team])), players = [...data.bootstrap.elements].sort((a, b) => Number(b.ep_next) - Number(a.ep_next)).slice(0, 100);
+  return <div className="page-stack"><PageHeader eyebrow="PLAYER INTELLIGENCE" title="Player market" description="Projections, form, price, ownership and availability from the current FPL snapshot." /><section className="surface table-surface"><div className="section-heading"><div><span>MODEL RANKING</span><h2>Top projected players</h2></div><span className="section-chip">{data.bootstrap.elements.length} players</span></div><div className="data-table-wrap"><table className="data-table"><thead><tr><th>Player</th><th>Team</th><th>Price</th><th>xPts</th><th>Form</th><th>Ownership</th><th>Status</th></tr></thead><tbody>{players.map((player) => <tr key={player.id}><td><strong>{player.web_name}</strong></td><td>{teams.get(player.team)?.short_name ?? "—"}</td><td>£{(player.now_cost / 10).toFixed(1)}m</td><td><strong>{Number(player.ep_next).toFixed(1)}</strong></td><td>{Number(player.form).toFixed(1)}</td><td>{Number(player.selected_by_percent).toFixed(1)}%</td><td><span className={player.status === "a" ? "availability ready" : "availability risk"}>{player.news || (player.status === "a" ? "Available" : "Flagged")}</span></td></tr>)}</tbody></table></div></section></div>;
+}

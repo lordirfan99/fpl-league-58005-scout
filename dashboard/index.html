@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,user-scalable=yes"/>
-  <meta name="theme-color" content="#07110d"/>
+  <meta name="theme-color" content="#3B0050"/>
   <title>Scout Intelligence · FPL 2026/27</title>
   <link rel="stylesheet" href="./styles.css"/>
 </head>
@@ -13,7 +13,7 @@
     <aside class="sidebar">
       <div class="brand">
         <div class="brand-mark">SI</div>
-        <div><strong>Scout Intelligence</strong><span>FPL LEAGUE LAB</span></div>
+        <div><strong>Fantasy Scout</strong><span>FPL TEAM INTELLIGENCE</span></div>
       </div>
       <div class="season-chip"><span class="live-dot"></span>2026/27 LIVE</div>
       <nav id="nav">
@@ -24,12 +24,13 @@
         <div class="nav-divider"></div>
         <button class="nav-item" data-view="compare"><span class="nav-icon">⇄</span><span>Compare Managers</span></button>
         <button class="nav-item" data-view="transfers"><span class="nav-icon">↗</span><span>Transfers & Chips</span></button>
-        <button class="nav-item" data-view="myteam"><span class="nav-icon">◆</span><span>My Team vs League</span></button>
+        <button class="nav-item" data-view="myteam"><span class="nav-icon">◆</span><span>My Team</span></button>
+        <button class="nav-item" data-view="assistant"><span class="nav-icon">✦</span><span>Decision Assistant</span></button>
         <div class="nav-divider"></div>
         <button class="nav-item" data-view="elite"><span class="nav-icon">⬟</span><span>Elite Tracker</span></button>
         <button class="nav-item" data-view="analytics"><span class="nav-icon">◈</span><span>Analytics</span></button>
       </nav>
-      <div class="sidebar-foot"><span>DATA ENGINE</span><strong>4 LEAGUES · GW SNAPSHOTS</strong><small>Repository-backed analytics</small></div>
+      <div class="sidebar-foot"><span>DATA ENGINE</span><strong>2 LEAGUES · GW SNAPSHOTS</strong><small>Repository-backed analytics</small></div>
     </aside>
 
     <main>
@@ -41,7 +42,7 @@
         </div>
         <div class="controls-wrap">
           <div class="controls">
-            <label><span>League</span><select id="leagueSelect"></select></label>
+            <label><span>League</span><div id="leagueSelect" class="league-switch" role="group" aria-label="Select league"></div></label>
             <label><span>Gameweek</span><select id="gwSelect"></select></label>
           </div>
         </div>
@@ -58,8 +59,8 @@
           <article class="panel"><div class="panel-head"><div><span class="panel-kicker">META</span><h2>Captaincy Pressure</h2></div><span class="panel-tag">LEAGUE</span></div><div id="captainBars"></div></article>
         </div>
         <div class="grid two">
-          <article class="panel"><div class="panel-head"><div><span class="panel-kicker">STRUCTURE</span><h2>Template XI</h2></div><span class="panel-tag">MOST OWNED</span></div><div id="templateXI" class="template-grid"></div></article>
-          <article class="panel"><div class="panel-head"><div><span class="panel-kicker">MOMENTUM</span><h2>Rank Movers</h2></div><span class="panel-tag">Δ RANK</span></div><div id="rankMovers"></div></article>
+          <article class="panel"><div class="panel-head"><div><span class="panel-kicker">STRUCTURE</span><h2>Most-owned XI</h2><p>Ownership template by position; not a predicted lineup.</p></div><span class="panel-tag">MOST OWNED</span></div><div id="templateXI" class="template-grid"></div></article>
+          <article class="panel"><div class="panel-head"><div><span class="panel-kicker">MOMENTUM</span><h2>Rank Movers</h2><p>Movement starts after the first completed gameweek.</p></div><span class="panel-tag">Δ RANK</span></div><div id="rankMovers"></div></article>
         </div>
         <article class="panel panel-chart"><div class="panel-head"><div><span class="panel-kicker">DISTRIBUTION</span><h2>Points Landscape</h2></div><span id="distMeta" class="panel-tag"></span></div><div id="distribution" class="distribution"></div></article>
       </section>
@@ -68,15 +69,17 @@
         <article class="panel panel-table"><div class="panel-head responsive"><div><span class="panel-kicker">STANDINGS</span><h2>League Explorer</h2><p>Search, sort and drill into every manager.</p></div><input id="leagueSearch" class="search" placeholder="Search manager or team…"/></div><div class="table-wrap"><table><thead><tr><th data-sort="league_rank">Rank</th><th>Move</th><th data-sort="entry_name">Team</th><th data-sort="player_name">Manager</th><th data-sort="gw_points">GW</th><th data-sort="total_points">Total</th><th data-sort="captain">Captain</th><th data-sort="transfers_made">Transfers</th></tr></thead><tbody id="leagueBody"></tbody></table></div></article>
       </section>
 
-      <section id="players" class="view"><article class="panel panel-table"><div class="panel-head responsive"><div><span class="panel-kicker">MARKET MAP</span><h2>Player Intelligence</h2><p>Ownership, captaincy and differential signal inside the selected league.</p></div><input id="playerSearch" class="search" placeholder="Search player…"/></div><div id="playerLoading" class="empty"></div><div class="table-wrap"><table><thead><tr><th>Player</th><th>Team</th><th>Pos</th><th>Owned</th><th>Ownership</th><th>Captain</th><th>Captaincy</th><th>Differential</th><th>Form</th></tr></thead><tbody id="playerBody"></tbody></table></div></article></section>
+      <section id="players" class="view"><article class="panel panel-table"><div class="panel-head responsive"><div><span class="panel-kicker">MARKET MAP</span><h2>Player Intelligence</h2><p>Ownership, captaincy, projections, availability and fixture context.</p></div><input id="playerSearch" class="search" placeholder="Search player…"/></div><div id="playerLoading" class="empty"></div><div class="table-wrap"><table><thead><tr><th>Player</th><th>Team</th><th>Pos</th><th>Price</th><th>GW / xPts</th><th>Fixture</th><th>FDR</th><th>EO</th><th>Ownership</th><th>Form</th><th>Status</th></tr></thead><tbody id="playerBody"></tbody></table></div></article><div id="playerComparePanel"></div></section>
 
       <section id="managers" class="view"><article class="panel"><div class="panel-head responsive"><div><span class="panel-kicker">MANAGER MAP</span><h2>Manager Explorer</h2><p>Open a manager to inspect squad structure, captaincy and value.</p></div><input id="managerSearch" class="search" placeholder="Search manager or team…"/></div><div id="managerCards" class="manager-grid"></div></article></section>
 
-      <section id="compare" class="view"><article class="panel"><div class="panel-head responsive"><div><span class="panel-kicker">HEAD TO HEAD</span><h2>Compare Managers</h2><p>Squad overlap, unique picks and gameweek separation.</p></div><div class="compare-controls"><select id="compareA"></select><span class="vs">VS</span><select id="compareB"></select></div></div><div id="compareResult"></div></article></section>
+      <section id="compare" class="view"><article class="panel"><div class="panel-head responsive"><div><span class="panel-kicker">HEAD TO HEAD</span><h2>Compare Managers</h2><p>Search your team or manager, then compare squad overlap and gameweek separation.</p></div><div class="compare-controls"><label><span>Manager 1</span><input id="compareSearchA" class="search compare-search" placeholder="Search team or manager…"/><select id="compareA"></select></label><span class="vs">VS</span><label><span>Manager 2</span><input id="compareSearchB" class="search compare-search" placeholder="Search team or manager…"/><select id="compareB"></select></label></div></div><div id="compareResult"></div></article></section>
 
-      <section id="transfers" class="view"><div class="grid two"><article class="panel"><div class="panel-head"><div><span class="panel-kicker">ACTIVITY</span><h2>Transfer Intelligence</h2></div><span class="panel-tag">MOVES</span></div><div id="transferIntel"></div></article><article class="panel"><div class="panel-head"><div><span class="panel-kicker">STRATEGY</span><h2>Chip Tracker</h2></div><span class="panel-tag">THIS GW</span></div><div id="chipTracker"></div></article></div></section>
+      <section id="transfers" class="view"><div class="grid two"><article class="panel"><div class="panel-head"><div><span class="panel-kicker">ACTIVITY</span><h2>Transfer Intelligence</h2></div><span class="panel-tag">MOVES</span></div><div id="transferIntel"></div></article><article class="panel"><div class="panel-head"><div><span class="panel-kicker">STRATEGY</span><h2>Chip Tracker</h2></div><span class="panel-tag">THIS GW</span></div><div id="chipTracker"></div><div id="chipChart" class="chip-chart"></div></article></div><div id="transferPlanner"></div></section>
 
-      <section id="myteam" class="view"><article class="panel"><div class="panel-head responsive"><div><span class="panel-kicker">PERSONAL SCOUT</span><h2>My Team vs League</h2><p>Find your differentials and the managers whose squads mirror yours.</p></div><select id="myTeamSelect"></select></div><div id="myTeamResult"></div></article></section>
+      <section id="myteam" class="view"><select id="myTeamSelect" class="myteam-manager-select" aria-label="Select manager"></select><div id="myTeamResult"></div></section>
+
+      <section id="assistant" class="view"><div id="assistantContent"></div></section>
 
             <section id="elite" class="view"><div id="eliteContent"></div></section>
 

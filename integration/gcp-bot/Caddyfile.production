@@ -1,0 +1,19 @@
+sportmania.duckdns.org {
+	encode gzip
+
+	handle_path /fpl-autopilot/* {
+		reverse_proxy 127.0.0.1:8787
+	}
+
+	handle {
+		reverse_proxy 127.0.0.1:5000
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+}

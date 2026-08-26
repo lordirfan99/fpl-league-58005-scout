@@ -1,0 +1,19 @@
+[Unit]
+Description=FPL Autopilot read-only dashboard bridge
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=fpl
+Group=fpl
+WorkingDirectory=/opt/fpl-autopilot
+EnvironmentFile=/etc/fpl-autopilot-dashboard.env
+ExecStart=/opt/fpl-autopilot/.venv/bin/python -m uvicorn webapp.dashboard_bridge:app --host 127.0.0.1 --port 8787
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
