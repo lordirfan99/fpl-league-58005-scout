@@ -40,7 +40,10 @@ $buildAccount = gcloud builds get-default-service-account --project $project
 
 gcloud iam service-accounts create fpl-github-deployer --project $project --display-name 'FPL GitHub deployer'
 gcloud projects add-iam-policy-binding $project --member "serviceAccount:$serviceAccount" --role roles/cloudbuild.builds.editor
+gcloud projects add-iam-policy-binding $project --member "serviceAccount:$serviceAccount" --role roles/serviceusage.serviceUsageConsumer
 gcloud iam service-accounts add-iam-policy-binding $buildAccount --project $project --member "serviceAccount:$serviceAccount" --role roles/iam.serviceAccountUser
+gcloud storage buckets add-iam-policy-binding "gs://${project}_cloudbuild" --member "serviceAccount:$serviceAccount" --role roles/storage.objectAdmin
+gcloud storage buckets add-iam-policy-binding "gs://${project}_cloudbuild" --member "serviceAccount:$serviceAccount" --role roles/storage.legacyBucketReader
 
 gcloud iam workload-identity-pools create github-actions --project $project --location global --display-name 'GitHub Actions'
 gcloud iam workload-identity-pools providers create-oidc github `
