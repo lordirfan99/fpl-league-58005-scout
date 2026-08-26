@@ -1,6 +1,8 @@
 import pytest
 from fastapi.testclient import TestClient
+from fastapi import HTTPException
 
+from app import main
 from app.main import app
 from app.recommendations import _phase, calibration_weights
 from app.validation import validate_manager_squad
@@ -85,6 +87,34 @@ def test_canonical_decision_packet_contract() -> None:
     assert payload["competitive"]["model_version"] == "competitive-v4.0"
     assert payload["execution_authority"] == "telegram"
     assert payload["writes_enabled"] is False
+
+
+def test_bridge_plan_is_canonical_before_current_snapshot(monkeypatch) -> None:
+    plan = {
+        "gw": 2, "status": "pending", "model_version": "competitive-v4.0",
+        "plan_id": "plan-1", "input_fp": "input-1",
+        "generated_at": "2026-08-26T08:00:00+00:00",
+    }
+
+    class Bridge:
+        configured = True
+
+        @staticmethod
+        def control_centre():
+            return {"plan": plan}
+
+    monkeypatch.setattr(main, "autopilot", Bridge())
+    monkeypatch.setattr(
+        main, "recommendations",
+        lambda **_: (_ for _ in ()).throw(HTTPException(status_code=404)),
+    )
+    response = client.get("/v1/decision/current?league_id=58005&gw=2")
+    payload = response.json()
+    assert response.status_code == 200
+    assert payload["packet_status"] == "valid"
+    assert payload["executable"] is True
+    assert payload["meta"]["source"] == "autopilot_bridge"
+    assert payload["plan"] == plan
 
 
 def test_v4_calibration_and_chase_are_deterministic() -> None:

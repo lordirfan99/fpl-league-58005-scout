@@ -248,15 +248,55 @@ def decision_current(
     otherwise the response remains a non-executable V4 diagnostic packet.
     """
     gw = gw or _current_gameweek()
+    bridge: dict = {}
+    if autopilot.configured:
+        try:
+            bridge = autopilot.control_centre()
+        except AutopilotUnavailableError:
+            bridge = {}
+    plan = bridge.get("plan") if isinstance(bridge, dict) else None
+    if not isinstance(plan, dict) or int(plan.get("gw") or -1) != gw:
+        plan = None
+    plan_is_v4 = bool(
+        isinstance(plan, dict)
+        and plan.get("status") == "pending"
+        and plan.get("model_version") == MODEL_VERSION
+        and plan.get("plan_id")
+        and plan.get("input_fp")
+    )
     try:
         recommendation = recommendations(league_id=league_id, gw=gw).model_dump(mode="json")
     except HTTPException as error:
         if error.status_code != 404:
             raise
-        # A missing GW snapshot is an expected ingestion state, not an API
-        # failure. Return an explicit safe-hold packet so both clients render
-        # the same explanation and never mistake a 404 for a live V4 plan.
+        # Before the deadline, current-GW opponent picks cannot exist yet. A
+        # fully bound V4 plan from the read-only bridge is still canonical;
+        # competitor context remains neutral until the locked snapshot lands.
         now = datetime.now(timezone.utc).isoformat()
+        if plan_is_v4:
+            packet_body = {"league_id": league_id, "gameweek": gw, "plan": plan}
+            decision_id = hashlib.sha256(
+                json.dumps(packet_body, sort_keys=True, separators=(",", ":")).encode()
+            ).hexdigest()
+            return {
+                "decision_id": decision_id,
+                "model_version": MODEL_VERSION,
+                "league_id": league_id,
+                "gameweek": gw,
+                "generated_at": plan.get("generated_at") or now,
+                "meta": {"source": "autopilot_bridge", "stale": False,
+                         "quality_status": "valid", "quality_issues": [],
+                         "snapshot_gameweek": gw},
+                "competitive": {"model_version": MODEL_VERSION, "phase": "MATCH",
+                                 "phase_reason": "Canonical V4 plan; current opponent picks are not locked yet.",
+                                 "alignment": 0, "target_alignment": 82},
+                "plan": plan,
+                "packet_status": "valid",
+                "executable": True,
+                "execution_authority": "telegram",
+                "writes_enabled": False,
+                "disclaimer": "Decision packet is read-only; Telegram performs final live validation and execution.",
+            }
         return {
             "decision_id": hashlib.sha256(f"{league_id}:{gw}:safe_hold".encode()).hexdigest(),
             "model_version": MODEL_VERSION,
@@ -275,22 +315,6 @@ def decision_current(
             "writes_enabled": False,
             "disclaimer": "No executable decision exists until the current FPL snapshot is ingested.",
         }
-    bridge: dict = {}
-    if autopilot.configured:
-        try:
-            bridge = autopilot.control_centre()
-        except AutopilotUnavailableError:
-            bridge = {}
-    plan = bridge.get("plan") if isinstance(bridge, dict) else None
-    if not isinstance(plan, dict) or int(plan.get("gw") or -1) != gw:
-        plan = None
-    plan_is_v4 = bool(
-        isinstance(plan, dict)
-        and plan.get("status") == "pending"
-        and plan.get("model_version") == MODEL_VERSION
-        and plan.get("plan_id")
-        and plan.get("input_fp")
-    )
     # A competitive context without a complete, bound plan is not a live
     # decision.  Expose that state explicitly so clients cannot mistake a
     # diagnostic/legacy bridge payload for an executable recommendation.
