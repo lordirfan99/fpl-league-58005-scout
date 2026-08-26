@@ -38,8 +38,17 @@ def test_elite_and_recommendation_contracts() -> None:
     assert elite.json()["count"] == expected_count
     assert elite.json()["ownership"]
     assert recommendations.status_code == 200
-    assert recommendations.json()["elite_count"] == expected_count
-    assert recommendations.json()["captains"]
+    payload = recommendations.json()
+    assert payload["elite_count"] == expected_count
+    assert payload["captains"]
+    assert payload["competitive"]["phase"] in {"CATCH", "MATCH", "ATTACK"}
+    assert 0 <= payload["competitive"]["alignment"] <= 100
+    assert payload["competitive"]["target_alignment"] == 82
+    assert payload["competitive"]["weights"] == {
+        "elite_consensus": 0.45,
+        "projection": 0.45,
+        "current_season_evidence": 0.10,
+    }
 
 
 def test_catalog_exposes_official_fpl_entities() -> None:
