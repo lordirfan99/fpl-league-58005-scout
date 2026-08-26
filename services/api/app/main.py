@@ -235,7 +235,33 @@ def decision_current(
     otherwise the response remains a non-executable V4 diagnostic packet.
     """
     gw = gw or _current_gameweek()
-    recommendation = recommendations(league_id=league_id, gw=gw).model_dump(mode="json")
+    try:
+        recommendation = recommendations(league_id=league_id, gw=gw).model_dump(mode="json")
+    except HTTPException as error:
+        if error.status_code != 404:
+            raise
+        # A missing GW snapshot is an expected ingestion state, not an API
+        # failure. Return an explicit safe-hold packet so both clients render
+        # the same explanation and never mistake a 404 for a live V4 plan.
+        now = datetime.now(timezone.utc).isoformat()
+        return {
+            "decision_id": hashlib.sha256(f"{league_id}:{gw}:safe_hold".encode()).hexdigest(),
+            "model_version": MODEL_VERSION,
+            "league_id": league_id,
+            "gameweek": gw,
+            "generated_at": now,
+            "meta": {"source": "snapshot", "stale": True, "quality_status": "unknown",
+                     "quality_issues": ["missing_gameweek_snapshot"], "snapshot_gameweek": gw},
+            "competitive": {"model_version": MODEL_VERSION, "phase": "MATCH",
+                             "phase_reason": "Waiting for the current gameweek snapshot.",
+                             "alignment": 0, "target_alignment": 82},
+            "plan": None,
+            "packet_status": "safe_hold",
+            "executable": False,
+            "execution_authority": "telegram",
+            "writes_enabled": False,
+            "disclaimer": "No executable decision exists until the current FPL snapshot is ingested.",
+        }
     bridge: dict = {}
     if autopilot.configured:
         try:
