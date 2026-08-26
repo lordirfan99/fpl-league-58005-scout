@@ -54,7 +54,7 @@ export async function getLeagueData(leagueId = DEFAULT_LEAGUE_ID, gameweek?: num
 
 async function getLeagueDataFromApi(leagueId: number, gameweek?: number): Promise<LeagueDashboardData> {
   type IdentityPayload = { current_gameweek: number };
-  type TeamPayload = { meta: { generated_at?: string }; manager: Manager; fixtures: Fixture[] };
+  type TeamPayload = { meta: { generated_at?: string; snapshot_at?: string }; manager: Manager; fixtures: Fixture[] };
   type LeaguePayload = { managers: Manager[] };
   type CatalogPayload = { players: Bootstrap["elements"]; teams: Bootstrap["teams"]; events: Bootstrap["events"] };
   const request = async <T>(path: string) => {
@@ -64,7 +64,7 @@ async function getLeagueDataFromApi(leagueId: number, gameweek?: number): Promis
   };
   const resolvedGameweek = gameweek ?? (await request<IdentityPayload>("/v1/me")).current_gameweek ?? DEFAULT_GAMEWEEK;
   const [team, league, catalog] = await Promise.all([
-    request<TeamPayload>(`/v1/me/team?league_id=${DEFAULT_LEAGUE_ID}&gw=${resolvedGameweek}`),
+    request<TeamPayload>(`/v1/me/team?league_id=${leagueId}&gw=${resolvedGameweek}`),
     request<LeaguePayload>(`/v1/leagues/${leagueId}?gw=${resolvedGameweek}`),
     request<CatalogPayload>("/v1/catalog"),
   ]);
@@ -75,7 +75,7 @@ async function getLeagueDataFromApi(leagueId: number, gameweek?: number): Promis
     fixture: team.fixtures,
     gameweek: resolvedGameweek,
     leagueId,
-    fetchedAt: team.meta.generated_at,
+    fetchedAt: team.meta.snapshot_at ?? team.meta.generated_at,
   };
 }
 

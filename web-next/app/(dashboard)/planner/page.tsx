@@ -1,10 +1,10 @@
 import { PageHeader } from "@/components/page-header";
 import { getPlannerData } from "@/lib/data";
-import { buildRecommendations } from "@/lib/model";
+import { getCompetitiveRecommendation } from "@/lib/competitive";
 import type { Fixture, Pick } from "@/lib/types";
 
 export default async function PlannerPage() {
-  const data = await getPlannerData(), plan = buildRecommendations(data.manager, data.managers, data.bootstrap, data.fixture);
+  const data = await getPlannerData(), plan = await getCompetitiveRecommendation(data.leagueId, data.gameweek);
   const gameweeks = Array.from({ length: data.toGameweek - data.fromGameweek + 1 }, (_, index) => data.fromGameweek + index);
   const playerIndex = new Map(data.bootstrap.elements.map((player) => [player.id, player]));
   const starters = data.manager.squad.slice(0, 11);

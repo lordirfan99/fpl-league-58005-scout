@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from .autopilot import AutopilotClient, AutopilotUnavailableError
-from .recommendations import build_recommendations, cohort_summary, elite_managers
+from .recommendations import MODEL_VERSION, build_recommendations, cohort_summary, elite_managers
 from .repository import SnapshotNotFoundError, SnapshotRepository
 from .schemas import (
     ApiMeta,
@@ -18,11 +18,12 @@ from .schemas import (
     TeamResponse,
 )
 from .settings import settings
+from .validation import snapshot_quality
 
 
 app = FastAPI(
     title="Fantasy Scout Intelligence API",
-    version="1.0.0",
+    version="4.0.0",
     description="Stable read API for the FPL dashboard and recommendation engine.",
 )
 app.add_middleware(
@@ -37,8 +38,12 @@ autopilot = AutopilotClient(settings)
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok", "service": "fpl-scout-api", "version": app.version}
+def health() -> dict[str, str | bool]:
+    return {
+        "status": "ok", "service": "fpl-scout-api", "version": app.version,
+        "competitive_model": MODEL_VERSION, "execution_authority": "telegram",
+        "dashboard_writes_enabled": False,
+    }
 
 
 @app.get("/v1/me")
@@ -204,8 +209,16 @@ def _meta(snapshot: dict) -> ApiMeta:
                 snapshot_at = snapshot_at.replace(tzinfo=timezone.utc)
         except ValueError:
             snapshot_at = None
-    stale = snapshot_at is None or (datetime.now(timezone.utc) - snapshot_at).total_seconds() > 12 * 60 * 60
-    return ApiMeta(source="snapshot", snapshot_at=snapshot_at, stale=stale)
+    freshness_hours = None
+    if snapshot_at is not None:
+        freshness_hours = round((datetime.now(timezone.utc) - snapshot_at).total_seconds() / 3600, 2)
+    stale = freshness_hours is None or freshness_hours > 12
+    quality_status, quality_issues = snapshot_quality(snapshot)
+    return ApiMeta(
+        source="snapshot", snapshot_at=snapshot_at, stale=stale, freshness_hours=freshness_hours,
+        snapshot_gameweek=int(snapshot.get("gw")) if snapshot.get("gw") is not None else None,
+        quality_status=quality_status, quality_issues=quality_issues,
+    )
 
 
 def _current_gameweek() -> int:

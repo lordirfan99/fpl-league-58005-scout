@@ -47,6 +47,15 @@ jobs:
           with urllib.request.urlopen(base + "/health", timeout=30) as response:
               payload = json.load(response)
           assert payload["status"] == "ok", payload
+          assert payload["competitive_model"] == "competitive-v4.0", payload
+          assert payload["dashboard_writes_enabled"] is False, payload
+          with urllib.request.urlopen(base + "/v1/me", timeout=30) as response:
+              identity = json.load(response)
+          gw = identity["current_gameweek"]
+          with urllib.request.urlopen(base + f"/v1/recommendations/current?league_id=58005&gw={gw}", timeout=60) as response:
+              recommendation = json.load(response)
+          assert recommendation["competitive"]["model_version"] == "competitive-v4.0", recommendation
+          assert recommendation["meta"]["quality_status"] == "valid", recommendation["meta"]
           with urllib.request.urlopen(base + "/v1/autopilot/control-centre", timeout=60) as response:
               control = json.load(response)
           assert control["writes_enabled"] is False

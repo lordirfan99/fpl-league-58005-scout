@@ -11,6 +11,10 @@ class ApiMeta(BaseModel):
     snapshot_at: datetime | None = None
     source: str = "snapshot"
     stale: bool = False
+    freshness_hours: float | None = None
+    snapshot_gameweek: int | None = None
+    quality_status: Literal["valid", "invalid", "unknown"] = "unknown"
+    quality_issues: list[str] = Field(default_factory=list)
 
 
 class Pick(BaseModel):

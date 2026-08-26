@@ -25,7 +25,7 @@ npm run build
 - Automatic current-gameweek discovery through the official FPL bootstrap cache
 - Versioned API integration with a hosted-snapshot fallback
 - Reusable application shell, pitch, player and metric components
-- Typed model adapter in `lib/model.ts`
+- Typed Competitive V4 API adapter in `lib/competitive.ts`; the browser does not duplicate the scoring formula
 - Existing production dashboard remains unchanged until cutover
 
 The production cutover steps and the Telegram safety boundary are documented in the repository's `DEPLOYMENT.md`.

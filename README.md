@@ -8,6 +8,19 @@ Production FPL decision, league-intelligence and competitive-alignment system fo
 - Production API: `https://fpl-scout-api-bztsnhv3ea-uc.a.run.app`
 - Repository owner: `lordirfan99`
 
+## Operational status
+
+| Item | Current contract |
+|---|---|
+| Competitive intelligence | `competitive-v4.0` — read-only API authority |
+| Optimizer laboratory | Shadow V3 — separate model, unchanged and non-executing |
+| Maximum snapshot age | 12 hours; older or unknown data is stale |
+| Real FPL execution authority | Telegram approval flow only |
+| Dashboard writes | Disabled |
+| Last manual documentation verification | 2026-08-26 UTC |
+
+After deployment, `/health` must report `competitive-v4.0`. A green service alone is insufficient: also confirm the expected GW, snapshot timestamp and `quality_status=valid`. The absence of an alert is not proof that an automated refresh succeeded.
+
 ---
 
 # 1. Read this first — zero-knowledge handoff
@@ -44,13 +57,13 @@ It has two related jobs:
 1. **FPL decision quality** — identify strong captain, transfer and squad decisions using projections, fixtures, availability and multi-GW planning.
 2. **Competitive positioning** — understand what strong managers own and decide when our team should align with them and when a model-supported deviation is justified.
 
-The competitive layer uses four phases:
+Competitive V4 uses four phases:
 
 | Phase | Meaning | Normal behaviour |
 |---|---|---|
 | `CATCH` | Squad is materially under-aligned with the validated elite core | Repair important structural gaps; avoid unnecessary differentials |
 | `MATCH` | Squad is close to the strong baseline | Maintain the core; preserve transfers and flexibility |
-| `ATTACK` | Baseline is healthy and controlled deviations are available | Take model-supported edges rather than random differentials |
+| `ATTACK` | Outside the early catch window, alignment remains below target | Use selective leverage to improve structure; do not blindly copy or punt |
 | `CHASE` | Later-season deficit requires more variance | Increase calculated leverage; still avoid unsupported punts |
 
 Early in the season the system is deliberately conservative. GW1/GW2 evidence is noisy and is not allowed to dominate established signals.
@@ -63,7 +76,27 @@ Projection evidence   45%
 Current-season data   10%
 ```
 
-The current-season component increases as more gameweeks provide evidence. These are operational weights, not permanent truths; they should eventually be backtested and recalibrated.
+The current-season component increases as more gameweeks provide evidence:
+
+| Gameweeks | Elite | Projection | Current season |
+|---|---:|---:|---:|
+| GW1–2 | 45% | 45% | 10% |
+| GW3–4 | 40% | 45% | 15% |
+| GW5–8 | 30% | 45% | 25% |
+| GW9+ | 25% | 45% | 30% |
+
+Unlike the previous implementation, V4 applies these weights directly to a normalized `0–100` competitive score:
+
+- elite component: elite ownership plus elite captaincy;
+- projection component: FPL `ep_next` plus fixture difficulty;
+- current-season component: form plus points per game;
+- availability risk: explicit score penalty and no model-support classification.
+
+The API in `services/api/app/recommendations.py` is the single calculation authority. The Next.js application consumes that response and must not independently reproduce the formula. These remain operational weights rather than permanent truths; backtest and recalibrate them before promotion to any execution path.
+
+> **Namespace warning:** Competitive V4 `CATCH/MATCH/ATTACK/CHASE` describes league-alignment posture. It is separate from any Autopilot captain-variance or execution mode with a similar name. Competitive V4 cannot create or execute an FPL action.
+
+`CHASE` activates only from GW28 when the gap to the tracked league leader is at least `max(40, remaining gameweeks × 5)` points. This deterministic threshold prevents an undocumented switch to high variance.
 
 ---
 
@@ -236,6 +269,8 @@ Check:
 - status/heartbeat;
 - engine version;
 - whether the recommendation is current rather than an old artifact.
+
+Always read the gain basis. Competitive V4 transfer `xpts_gain` is **next-GW gross projection difference against the named same-position outgoing player**. It excludes hits, free-transfer opportunity cost, price changes and multi-GW transfer-path cost. The GCP Autopilot horizon/net fields are separate and must state whether hits are already deducted.
 
 A recommendation with a large headline gain should still be checked against:
 
@@ -613,7 +648,9 @@ A completed-GW snapshot is committed only when:
 - FPL reports the GW as both `finished` and `data_checked`;
 - both configured leagues are present;
 - every manager has 15 players;
-- every manager has exactly 11 scoring starters;
+- every manager has a legal 11-player starting lineup in the first 11 FPL pick positions;
+- multiplier validation is chip-aware: normally 11 players score, while Bench Boost permits all 15;
+- captain, vice-captain and positional squad/lineup structure are valid;
 - no manager fetch failed;
 - full and compact manager counts match.
 
@@ -633,7 +670,7 @@ Preserve these invariants unless the owner explicitly redesigns the architecture
 4. **Do not replace Autopilot authority with a frontend heuristic.**
 5. **Do not interpret elite ownership as proof a player should be bought.**
 6. **Do not interpret low ownership as proof of an edge.**
-7. **Preserve Catch/Match/Attack semantics when modifying competitive logic.**
+7. **Preserve Competitive V4 Catch/Match/Attack/Chase semantics when modifying competitive logic.**
 8. **Keep early-GW evidence conservative until calibration supports increasing it.**
 9. **Run tests/typecheck/build after meaningful changes.**
 10. **Keep production data validation fail-closed.**
@@ -678,7 +715,7 @@ The competitive layer is intentionally incremental. High-value future work inclu
 4. Add Monte Carlo comparison against the relevant elite cohort.
 5. Add transfer-path optimisation across several GWs rather than isolated moves.
 6. Add Wildcard/chip scenario comparison.
-7. Backtest and recalibrate competitive weights and thresholds.
+7. Backtest and recalibrate Competitive V4 weights, component normalization and phase thresholds.
 8. Add decision attribution so good process is separated from lucky/unlucky outcomes.
 
 Do not rush these components into execution authority. Introduce major predictive changes in shadow/read-only form first, collect evidence, then promote deliberately.
