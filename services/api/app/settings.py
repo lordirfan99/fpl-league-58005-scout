@@ -15,6 +15,7 @@ class Settings:
     telegram_bot_name: str | None
     autopilot_base_url: str | None
     autopilot_token: str | None
+    snapshot_bucket: str | None
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -36,6 +37,7 @@ class Settings:
             telegram_bot_name=os.getenv("TELEGRAM_BOT_NAME"),
             autopilot_base_url=os.getenv("FPL_AUTOPILOT_BASE_URL", "").rstrip("/") or None,
             autopilot_token=os.getenv("FPL_AUTOPILOT_TOKEN", "").strip() or None,
+            snapshot_bucket=os.getenv("FPL_SNAPSHOT_BUCKET", "").strip() or None,
         )
 
 

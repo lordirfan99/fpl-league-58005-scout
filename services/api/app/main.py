@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import hashlib
+import hmac
 import json
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from .autopilot import AutopilotClient, AutopilotUnavailableError
@@ -36,7 +37,7 @@ app.add_middleware(
     allow_methods=["GET"],
     allow_headers=["Accept", "Content-Type"],
 )
-repository = SnapshotRepository(settings.data_dir)
+repository = SnapshotRepository(settings.data_dir, settings.snapshot_bucket)
 league_registry = LeagueRegistry(settings.data_dir)
 autopilot = AutopilotClient(settings)
 
@@ -47,7 +48,46 @@ def health() -> dict[str, str | bool]:
         "status": "ok", "service": "fpl-scout-api", "version": app.version,
         "competitive_model": MODEL_VERSION, "execution_authority": "telegram",
         "dashboard_writes_enabled": False,
+        "shared_snapshots": bool(settings.snapshot_bucket),
     }
+
+
+@app.post("/internal/v1/snapshots/{filename}")
+async def publish_snapshot(
+    filename: str,
+    request: Request,
+    authorization: str | None = Header(default=None),
+) -> dict[str, str | int]:
+    """Ingest a VM-produced read-only snapshot into the private GCS store."""
+    expected = settings.autopilot_token
+    supplied = authorization.removeprefix("Bearer ").strip() if authorization else ""
+    if not expected or not hmac.compare_digest(supplied, expected):
+        raise HTTPException(status_code=401, detail="Invalid snapshot publisher token")
+    if not settings.snapshot_bucket:
+        raise HTTPException(status_code=503, detail="Shared snapshot bucket is not configured")
+    if filename not in {"bootstrap_cache.json", "fixtures_cache.json"} and not (
+        filename.startswith("gw") and filename.endswith("_data.json") and filename.replace("_", "").replace(".", "").isalnum()
+    ):
+        raise HTTPException(status_code=400, detail="Invalid snapshot filename")
+    body = await request.body()
+    if len(body) > 5_000_000:
+        raise HTTPException(status_code=413, detail="Snapshot exceeds 5 MB limit")
+    try:
+        payload = json.loads(body)
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise HTTPException(status_code=400, detail="Snapshot is not valid JSON") from error
+    if filename.startswith("gw"):
+        quality, issues = snapshot_quality(payload)
+        if quality != "valid":
+            raise HTTPException(status_code=422, detail={"quality": quality, "issues": issues[:10]})
+        if int(payload.get("gw") or 0) <= 0 or not payload.get("competitors"):
+            raise HTTPException(status_code=422, detail="Snapshot has no gameweek competitors")
+    if repository._bucket is None:
+        raise HTTPException(status_code=503, detail="GCS repository is unavailable")
+    blob = repository._bucket.blob(f"snapshots/{filename}")
+    blob.upload_from_string(json.dumps(payload, separators=(",", ":")), content_type="application/json")
+    repository._remote_cache.pop(filename, None)
+    return {"status": "published", "filename": filename, "bytes": len(body)}
 
 
 @app.get("/v1/me")
@@ -138,7 +178,7 @@ def elite(
     cohort = elite_managers(
         snapshot.get("competitors", []),
         percentile,
-        population_size=snapshot.get("total_entries"),
+        population_size=snapshot.get("population_size") or snapshot.get("total_entries"),
     )
     ownership, captaincy = cohort_summary(cohort)
     average = sum(item.get("gw_points", 0) for item in cohort) / max(1, len(cohort))
@@ -165,7 +205,7 @@ def recommendations(
         managers,
         repository.bootstrap(),
         repository.fixtures(min(gw + 1, 38)),
-        population_size=snapshot.get("total_entries"),
+        population_size=snapshot.get("population_size") or snapshot.get("total_entries"),
         gameweek=gw,
     )
     return RecommendationResponse(

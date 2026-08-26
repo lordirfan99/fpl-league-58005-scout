@@ -5,6 +5,11 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+try:
+    from google.cloud import storage
+except ImportError:  # pragma: no cover - local development without GCS extras
+    storage = None
+
 
 class SnapshotNotFoundError(FileNotFoundError):
     pass
@@ -13,8 +18,11 @@ class SnapshotNotFoundError(FileNotFoundError):
 class SnapshotRepository:
     """Read-only adapter around the existing collector output."""
 
-    def __init__(self, data_dir: Path):
+    def __init__(self, data_dir: Path, bucket_name: str | None = None):
         self.data_dir = data_dir.resolve()
+        self.bucket_name = bucket_name
+        self._bucket = storage.Client().bucket(bucket_name) if bucket_name and storage else None
+        self._remote_cache: dict[str, tuple[int | None, dict[str, Any]]] = {}
 
     def _path(self, filename: str) -> Path:
         path = (self.data_dir / filename).resolve()
@@ -31,6 +39,21 @@ class SnapshotRepository:
             return json.load(source)
 
     def read(self, filename: str) -> dict[str, Any]:
+        if self._bucket is not None:
+            blob = self._bucket.blob(f"snapshots/{filename}")
+            try:
+                blob.reload()
+                generation = int(blob.generation) if blob.generation else None
+                cached = self._remote_cache.get(filename)
+                if cached and cached[0] == generation:
+                    return cached[1]
+                payload = json.loads(blob.download_as_text(encoding="utf-8"))
+                self._remote_cache[filename] = (generation, payload)
+                return payload
+            except Exception:
+                # Packaged data remains a fail-soft recovery source if GCS is
+                # temporarily unavailable or the requested GW is not published.
+                pass
         path = self._path(filename)
         return self._read_cached(filename, path.stat().st_mtime_ns)
 
