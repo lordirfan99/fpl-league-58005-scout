@@ -2,7 +2,7 @@ import "server-only";
 import type { Bootstrap, DashboardData, Fixture, FixtureHorizon, LeagueSnapshot, Manager } from "./types";
 
 const DATA_BASE = process.env.FPL_DATA_BASE_URL ?? "https://fpl-scout-intelligence.netlify.app/data";
-const API_BASE = process.env.FPL_API_BASE_URL?.replace(/\/$/, "");
+const API_BASE = (process.env.FPL_API_BASE_URL ?? "https://fpl-scout-api-bztsnhv3ea-uc.a.run.app").replace(/\/$/, "");
 const memoryCache = new Map<string, { expiresAt: number; value: unknown }>();
 export const MY_TEAM_ID = 2797967;
 export const DEFAULT_LEAGUE_ID = 58005;

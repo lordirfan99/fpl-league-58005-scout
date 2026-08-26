@@ -122,9 +122,12 @@ Current views:
 - **GCP Autopilot** — live model plan, safety validation, heartbeat and Telegram handoff.
 - **Shadow V3** — uncertainty ranges, component xPts, multi-GW scenarios and promotion gates.
 - **Planner** — forward fixture horizon and squad planning.
-- **League** — searchable standings and manager lineup inspection.
-- **Elite 5%** — template, ownership, captaincy and manager inspection.
-- **Players** — official player status, price, form and fixture data.
+- **League Explorer** — searchable standings and manager lineup inspection for both tracked leagues.
+- **Elite 5%** — each league's top-5% cohort, consensus XI and bench, squad matrix, ownership edges, captaincy, distributions and every elite lineup.
+- **Compare** — head-to-head squad overlap, unique picks, captaincy, rank gap and full lineups.
+- **Transfers & Chips** — complete-league and elite-cohort transfer consensus plus chip timing.
+- **Analytics** — formation, points, squad-value, captaincy and elite ownership distributions.
+- **Players** — official player status, availability, price, form and fixture data.
 
 If you only have time to inspect three pages before a deadline, use:
 
@@ -528,11 +531,12 @@ Install and start the frontend:
 ```powershell
 cd web-next
 npm ci
-$env:FPL_API_BASE_URL='https://fpl-scout-api-bztsnhv3ea-uc.a.run.app'
 npm run dev
 ```
 
 Open the local URL printed by Next.js, normally `http://localhost:3000`.
+
+The production read API is the built-in default. Set `FPL_API_BASE_URL` only when testing another API deployment.
 
 Validate frontend changes before pushing:
 
