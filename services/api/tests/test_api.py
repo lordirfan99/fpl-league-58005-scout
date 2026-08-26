@@ -117,6 +117,31 @@ def test_bridge_plan_is_canonical_before_current_snapshot(monkeypatch) -> None:
     assert payload["plan"] == plan
 
 
+def test_executed_bridge_plan_remains_visible_but_not_executable(monkeypatch) -> None:
+    plan = {
+        "gw": 2, "status": "executed", "model_version": "competitive-v4.0",
+        "plan_id": "plan-1", "input_fp": "input-1",
+    }
+
+    class Bridge:
+        configured = True
+
+        @staticmethod
+        def control_centre():
+            return {"plan": plan}
+
+    monkeypatch.setattr(main, "autopilot", Bridge())
+    monkeypatch.setattr(
+        main, "recommendations",
+        lambda **_: (_ for _ in ()).throw(HTTPException(status_code=404)),
+    )
+    payload = client.get("/v1/decision/current?league_id=58005&gw=2").json()
+    assert payload["packet_status"] == "applied"
+    assert payload["executable"] is False
+    assert payload["meta"]["quality_status"] == "valid"
+    assert payload["plan"] == plan
+
+
 def test_v4_calibration_and_chase_are_deterministic() -> None:
     for gameweek in (1, 3, 6, 12):
         assert sum(calibration_weights(gameweek).values()) == pytest.approx(1.0)

@@ -257,13 +257,14 @@ def decision_current(
     plan = bridge.get("plan") if isinstance(bridge, dict) else None
     if not isinstance(plan, dict) or int(plan.get("gw") or -1) != gw:
         plan = None
-    plan_is_v4 = bool(
+    plan_is_bound_v4 = bool(
         isinstance(plan, dict)
-        and plan.get("status") == "pending"
         and plan.get("model_version") == MODEL_VERSION
         and plan.get("plan_id")
         and plan.get("input_fp")
     )
+    plan_is_v4 = plan_is_bound_v4 and plan.get("status") == "pending"
+    plan_is_applied = plan_is_bound_v4 and plan.get("status") == "executed"
     try:
         recommendation = recommendations(league_id=league_id, gw=gw).model_dump(mode="json")
     except HTTPException as error:
@@ -273,7 +274,7 @@ def decision_current(
         # fully bound V4 plan from the read-only bridge is still canonical;
         # competitor context remains neutral until the locked snapshot lands.
         now = datetime.now(timezone.utc).isoformat()
-        if plan_is_v4:
+        if plan_is_v4 or plan_is_applied:
             packet_body = {"league_id": league_id, "gameweek": gw, "plan": plan}
             decision_id = hashlib.sha256(
                 json.dumps(packet_body, sort_keys=True, separators=(",", ":")).encode()
@@ -291,8 +292,8 @@ def decision_current(
                                  "phase_reason": "Canonical V4 plan; current opponent picks are not locked yet.",
                                  "alignment": 0, "target_alignment": 82},
                 "plan": plan,
-                "packet_status": "valid",
-                "executable": True,
+                "packet_status": "valid" if plan_is_v4 else "applied",
+                "executable": plan_is_v4,
                 "execution_authority": "telegram",
                 "writes_enabled": False,
                 "disclaimer": "Decision packet is read-only; Telegram performs final live validation and execution.",
@@ -318,7 +319,7 @@ def decision_current(
     # A competitive context without a complete, bound plan is not a live
     # decision.  Expose that state explicitly so clients cannot mistake a
     # diagnostic/legacy bridge payload for an executable recommendation.
-    packet_status = "valid" if plan_is_v4 else "safe_hold"
+    packet_status = "valid" if plan_is_v4 else ("applied" if plan_is_applied else "safe_hold")
     packet_body = {
         "league_id": league_id,
         "gameweek": gw,
