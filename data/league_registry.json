@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "max_active": 10,
+  "leagues": [
+    {
+      "league_id": 58005,
+      "name": "KK Old Boys",
+      "official_name": "LIGA FPL KK OLD BOYS S5",
+      "status": "active",
+      "tracking_mode": "full"
+    },
+    {
+      "league_id": 131997,
+      "name": "Overall IFE",
+      "official_name": "OVERALL IFE 26/27 [MUSIM KE-7]",
+      "status": "active",
+      "tracking_mode": "full"
+    }
+  ]
+}

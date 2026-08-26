@@ -8,6 +8,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from .autopilot import AutopilotClient, AutopilotUnavailableError
+from .league_registry import LeagueRegistry
 from .recommendations import MODEL_VERSION, build_recommendations, cohort_summary, elite_managers
 from .repository import SnapshotNotFoundError, SnapshotRepository
 from .schemas import (
@@ -36,6 +37,7 @@ app.add_middleware(
     allow_headers=["Accept", "Content-Type"],
 )
 repository = SnapshotRepository(settings.data_dir)
+league_registry = LeagueRegistry(settings.data_dir)
 autopilot = AutopilotClient(settings)
 
 
@@ -74,6 +76,17 @@ def my_team(
         manager=manager,
         fixtures=repository.fixtures(min(gw + 1, 38)),
     )
+
+
+@app.get("/v1/leagues/registry")
+def league_registry_list() -> dict:
+    """Return the shared tracked-league registry used by all clients."""
+    registry = league_registry.read()
+    return {
+        "version": registry["version"],
+        "max_active": registry["max_active"],
+        "leagues": registry["leagues"],
+    }
 
 
 @app.get("/v1/leagues/{league_id}", response_model=LeagueResponse)
