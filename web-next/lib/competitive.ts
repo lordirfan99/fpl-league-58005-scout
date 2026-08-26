@@ -52,7 +52,7 @@ export interface CompetitiveRecommendation {
 type Json = Record<string, unknown>;
 
 export async function getCompetitiveRecommendation(leagueId: number, gameweek: number): Promise<CompetitiveRecommendation> {
-  const response = await fetch(`${API_BASE}/v1/recommendations/current?league_id=${leagueId}&gw=${gameweek}`, { cache: "no-store" });
+  const response = await fetch(`${API_BASE}/v1/decision/current?league_id=${leagueId}&gw=${gameweek}`, { cache: "no-store" });
   if (!response.ok) throw new Error(`Scout API returned ${response.status} for V4 competitive recommendation`);
   const raw = await response.json() as Json;
   const competitive = (raw.competitive as Json | undefined) ?? {};

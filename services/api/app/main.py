@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import hashlib
+import json
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -219,6 +221,47 @@ def _meta(snapshot: dict) -> ApiMeta:
         snapshot_gameweek=int(snapshot.get("gw")) if snapshot.get("gw") is not None else None,
         quality_status=quality_status, quality_issues=quality_issues,
     )
+
+
+@app.get("/v1/decision/current")
+def decision_current(
+    league_id: int = Query(default=settings.default_league_id, gt=0),
+    gw: int | None = Query(default=None, ge=1, le=38),
+) -> dict:
+    """Return the single decision packet shared by Telegram and the dashboard.
+
+    The API never executes FPL writes.  When the read-only autopilot bridge has
+    a matching pending plan, its exact lineup/transfer packet is embedded;
+    otherwise the response remains a non-executable V4 diagnostic packet.
+    """
+    gw = gw or _current_gameweek()
+    recommendation = recommendations(league_id=league_id, gw=gw).model_dump(mode="json")
+    bridge: dict = {}
+    if autopilot.configured:
+        try:
+            bridge = autopilot.control_centre()
+        except AutopilotUnavailableError:
+            bridge = {}
+    plan = bridge.get("plan") if isinstance(bridge, dict) else None
+    if not isinstance(plan, dict) or int(plan.get("gw") or -1) != gw:
+        plan = None
+    packet_body = {"league_id": league_id, "gameweek": gw, "competitive": recommendation["competitive"], "plan": plan}
+    decision_id = hashlib.sha256(json.dumps(packet_body, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    return {
+        **recommendation,
+        "decision_id": decision_id,
+        "model_version": MODEL_VERSION,
+        "league_id": league_id,
+        "gameweek": gw,
+        "generated_at": recommendation["meta"].get("generated_at"),
+        "meta": recommendation["meta"],
+        "competitive": recommendation["competitive"],
+        "plan": plan,
+        "executable": bool(plan and plan.get("status") == "pending" and plan.get("model_version") == MODEL_VERSION),
+        "execution_authority": "telegram",
+        "writes_enabled": False,
+        "disclaimer": "Decision packet is read-only; Telegram performs final live validation and execution.",
+    }
 
 
 def _current_gameweek() -> int:

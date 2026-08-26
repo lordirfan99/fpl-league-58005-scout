@@ -76,6 +76,17 @@ def test_bench_boost_validation_is_chip_aware() -> None:
     assert validate_manager_squad(payload) == []
 
 
+def test_canonical_decision_packet_contract() -> None:
+    response = client.get("/v1/decision/current?league_id=58005&gw=1")
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload["decision_id"]) == 64
+    assert payload["model_version"] == "competitive-v4.0"
+    assert payload["competitive"]["model_version"] == "competitive-v4.0"
+    assert payload["execution_authority"] == "telegram"
+    assert payload["writes_enabled"] is False
+
+
 def test_v4_calibration_and_chase_are_deterministic() -> None:
     for gameweek in (1, 3, 6, 12):
         assert sum(calibration_weights(gameweek).values()) == pytest.approx(1.0)
