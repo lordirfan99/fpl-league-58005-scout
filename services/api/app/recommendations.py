@@ -41,6 +41,49 @@ def cohort_summary(elite: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], l
     return rows(owned), rows(captained)
 
 
+def _formation(manager: dict[str, Any]) -> str:
+    counts = {"DEF": 0, "MID": 0, "FWD": 0}
+    for pick in (manager.get("squad") or [])[:11]:
+        if pick.get("multiplier", 1) and pick.get("position") in counts:
+            counts[pick["position"]] += 1
+    return f"{counts['DEF']}-{counts['MID']}-{counts['FWD']}"
+
+
+def _elite_template(elite: list[dict[str, Any]], ownership: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Return the consensus XI/bench hierarchy used by the elite cohort."""
+    denominator = max(1, len(elite))
+    starters: dict[int, int] = Counter()
+    for manager in elite:
+        for pick in (manager.get("squad") or [])[:11]:
+            try:
+                starters[int(pick["element"])] += 1
+            except (KeyError, TypeError, ValueError):
+                continue
+    result = []
+    for row in ownership[:15]:
+        item = dict(row)
+        item["elite_percentage"] = item.get("percentage", 0.0)
+        item["starter_percentage"] = round(100.0 * starters.get(int(item["element"]), 0) / denominator, 1)
+        result.append(item)
+    return result
+
+
+def _transfer_consensus(elite: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    counts: Counter[tuple[str, str]] = Counter()
+    for manager in elite:
+        for transfer in manager.get("transfer_details", []) or []:
+            out_name = (transfer.get("out_name") or transfer.get("out")
+                        or transfer.get("element_out"))
+            in_name = (transfer.get("in_name") or transfer.get("in")
+                       or transfer.get("element_in"))
+            if out_name and in_name:
+                counts[(str(out_name), str(in_name))] += 1
+    denominator = max(1, len(elite))
+    return [{"name": f"{out} → {incoming}", "count": count,
+             "percentage": round(100.0 * count / denominator, 1)}
+            for (out, incoming), count in counts.most_common(10)]
+
+
 def calibration_weights(gameweek: int) -> dict[str, float]:
     """V4 weights used directly in every player's competitive score."""
     if gameweek <= 2:
@@ -117,6 +160,10 @@ def build_recommendations(
 ) -> dict[str, Any]:
     elite = elite_managers(managers, population_size=population_size)
     ownership, captaincy = cohort_summary(elite)
+    elite_template = _elite_template(elite, ownership)
+    formation_counts = Counter(_formation(manager) for manager in elite)
+    template_formation = formation_counts.most_common(1)[0][0] if formation_counts else "3-4-3"
+    transfer_consensus = _transfer_consensus(elite)
     ownership_by_id = {row["element"]: row["percentage"] for row in ownership}
     captaincy_by_id = {row["element"]: row["percentage"] for row in captaincy}
     player_index = {player["id"]: player for player in bootstrap.get("elements", [])}
@@ -226,6 +273,18 @@ def build_recommendations(
             (pick for pick in signals if pick["role"] == "INVESTIGATE"),
             key=lambda pick: pick["elite_ownership"], reverse=True,
         )[:6],
+        "elite_template": elite_template,
+        "template_formation": template_formation,
+        "captain_consensus": captaincy[:5],
+        "transfer_consensus": transfer_consensus,
+        "template_gate": {
+            "alignment_threshold": target_alignment,
+            "alignment": alignment,
+            "differential_allowed": alignment >= target_alignment and bool(
+                any(item["role"] == "CONTROLLED_EDGE" for item in signals)
+            ),
+            "decision": "CONTROLLED_DIFFERENTIAL" if alignment >= target_alignment else "CONVERGE_TO_TEMPLATE",
+        },
         "weights": weights,
         "score_definition": "weighted elite consensus + FPL projection/fixture + current form/PPG; 0-100",
         "execution_authority": "telegram", "writes_enabled": False,

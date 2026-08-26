@@ -59,6 +59,11 @@ def test_elite_and_recommendation_contracts() -> None:
         "current_season_evidence": 0.10,
     }
     assert payload["competitive"]["writes_enabled"] is False
+    assert payload["competitive"]["template_formation"]
+    assert payload["competitive"]["elite_template"]
+    assert payload["competitive"]["template_gate"]["decision"] in {
+        "CONVERGE_TO_TEMPLATE", "CONTROLLED_DIFFERENTIAL"
+    }
     assert payload["competitive"]["execution_authority"] == "telegram"
     assert payload["meta"]["quality_status"] == "valid"
 

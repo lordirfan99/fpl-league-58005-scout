@@ -19,6 +19,9 @@ export interface CompetitivePlayer extends Pick {
   eliteCore: boolean;
   role: CompetitiveRole;
   score: number;
+  count?: number;
+  percentage?: number;
+  starterPercentage?: number;
 }
 
 export interface CompetitiveRecommendation {
@@ -42,6 +45,11 @@ export interface CompetitiveRecommendation {
     criticalMissing: CompetitivePlayer[];
     modelEdges: CompetitivePlayer[];
     disagreements: CompetitivePlayer[];
+    eliteTemplate: CompetitivePlayer[];
+    templateFormation?: string;
+    captainConsensus: CompetitivePlayer[];
+    transferConsensus: Array<{ name: string; count: number; percentage: number }>;
+    templateGate: { alignmentThreshold?: number; alignment?: number; differentialAllowed?: boolean; decision?: string };
     weights: { eliteConsensus: number; projection: number; currentSeasonEvidence: number };
     scoreDefinition: string;
     executionAuthority: "telegram";
@@ -85,6 +93,18 @@ export async function getCompetitiveRecommendation(leagueId: number, gameweek: n
       coreOwned: number(competitive.core_owned), coreSize: number(competitive.core_size),
       criticalMissing: players(competitive.critical_missing), modelEdges: players(competitive.model_edges),
       disagreements: players(competitive.disagreements),
+      eliteTemplate: players(competitive.elite_template),
+      templateFormation: text(competitive.template_formation),
+      captainConsensus: players(competitive.captain_consensus),
+      transferConsensus: ((competitive.transfer_consensus as Json[]) ?? []).map((row) => ({
+        name: text(row.name) ?? "—", count: number(row.count), percentage: number(row.percentage),
+      })),
+      templateGate: {
+        alignmentThreshold: optionalNumber((competitive.template_gate as Json | undefined)?.alignment_threshold),
+        alignment: optionalNumber((competitive.template_gate as Json | undefined)?.alignment),
+        differentialAllowed: Boolean((competitive.template_gate as Json | undefined)?.differential_allowed),
+        decision: text((competitive.template_gate as Json | undefined)?.decision),
+      },
       weights: {
         eliteConsensus: number(weights.elite_consensus), projection: number(weights.projection),
         currentSeasonEvidence: number(weights.current_season_evidence),
@@ -103,6 +123,9 @@ function player(raw: Json): CompetitivePlayer {
     fdr: raw.fdr == null ? null : number(raw.fdr), risk: Boolean(raw.risk),
     modelSupport: Boolean(raw.model_support), eliteCore: Boolean(raw.elite_core),
     role: raw.role as CompetitiveRole, score: number(raw.score),
+    count: raw.count == null ? undefined : number(raw.count),
+    percentage: raw.percentage == null ? undefined : number(raw.percentage),
+    starterPercentage: raw.starter_percentage == null ? undefined : number(raw.starter_percentage),
   };
 }
 
