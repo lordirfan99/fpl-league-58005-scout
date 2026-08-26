@@ -67,17 +67,30 @@ async function getLeagueDataFromApi(leagueId: number, gameweek?: number): Promis
   // member of the selected league (for example the public prize league).
   // Treat the personal-team lookup as optional; the league snapshot remains
   // the source of truth for elite/cohort pages.
-  const [team, league, catalog] = await Promise.all([
-    request<TeamPayload>(`/v1/me/team?league_id=${leagueId}&gw=${resolvedGameweek}`).catch(() => null),
-    request<LeaguePayload>(`/v1/leagues/${leagueId}?gw=${resolvedGameweek}`),
-    request<CatalogPayload>("/v1/catalog"),
-  ]);
+  const catalog = await request<CatalogPayload>("/v1/catalog");
+  // League snapshots arrive after the live gameweek advances.  If the
+  // selected league has not been collected for the current GW yet, walk back
+  // to the newest available snapshot instead of rendering an application
+  // error page.  This is especially important for large/public leagues.
+  let league: LeaguePayload | null = null;
+  let snapshotGameweek = resolvedGameweek;
+  for (let candidate = resolvedGameweek; candidate >= 1; candidate -= 1) {
+    try {
+      league = await request<LeaguePayload>(`/v1/leagues/${leagueId}?gw=${candidate}`);
+      snapshotGameweek = candidate;
+      break;
+    } catch {
+      // Try the previous collected gameweek.
+    }
+  }
+  if (!league) throw new Error(`No league snapshot available for league ${leagueId}`);
+  const team = await request<TeamPayload>(`/v1/me/team?league_id=${leagueId}&gw=${snapshotGameweek}`).catch(() => null);
   return {
     manager: league.managers.find((entry) => entry.entry_id === MY_TEAM_ID),
     managers: league.managers,
     bootstrap: { elements: catalog.players, teams: catalog.teams, events: catalog.events },
     fixture: team?.fixtures ?? [],
-    gameweek: resolvedGameweek,
+    gameweek: snapshotGameweek,
     leagueId,
     fetchedAt: team?.meta.snapshot_at ?? team?.meta.generated_at ?? league.meta?.snapshot_at ?? league.meta?.generated_at,
   };
