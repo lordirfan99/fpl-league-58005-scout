@@ -146,6 +146,7 @@ def recommendations(
         repository.bootstrap(),
         repository.fixtures(min(gw + 1, 38)),
         population_size=snapshot.get("total_entries"),
+        gameweek=gw,
     )
     return RecommendationResponse(
         meta=_meta(snapshot), league_id=league_id, gameweek=gw, team_id=settings.my_team_id,
