@@ -41,19 +41,43 @@ def cohort_summary(elite: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], l
     return rows(owned), rows(captained)
 
 
+def _calibration_weights(gameweek: int) -> dict[str, float]:
+    if gameweek <= 2:
+        return {"elite_consensus": 0.45, "projection": 0.45, "current_season_evidence": 0.10}
+    if gameweek <= 4:
+        return {"elite_consensus": 0.40, "projection": 0.45, "current_season_evidence": 0.15}
+    if gameweek <= 8:
+        return {"elite_consensus": 0.30, "projection": 0.45, "current_season_evidence": 0.25}
+    return {"elite_consensus": 0.25, "projection": 0.45, "current_season_evidence": 0.30}
+
+
+def _role(elite_owned: float, model_support: bool, risk: bool) -> str:
+    if risk:
+        return "AVOID"
+    if elite_owned >= 60 and model_support:
+        return "ALIGN"
+    if elite_owned < 35 and model_support:
+        return "CONTROLLED_EDGE"
+    if elite_owned >= 60 and not model_support:
+        return "INVESTIGATE"
+    if elite_owned < 20 and not model_support:
+        return "AVOID"
+    return "NEUTRAL"
+
+
 def build_recommendations(
     manager: dict[str, Any],
     managers: list[dict[str, Any]],
     bootstrap: dict[str, Any],
     fixtures: list[dict[str, Any]],
     population_size: int | None = None,
+    gameweek: int = 1,
 ) -> dict[str, Any]:
     elite = elite_managers(managers, population_size=population_size)
     ownership, captaincy = cohort_summary(elite)
     ownership_by_id = {row["element"]: row["percentage"] for row in ownership}
     captaincy_by_id = {row["element"]: row["percentage"] for row in captaincy}
     player_index = {player["id"]: player for player in bootstrap.get("elements", [])}
-    team_index = {team["id"]: team["name"] for team in bootstrap.get("teams", [])}
     fixture_by_team: dict[str, tuple[str, int]] = {}
     for fixture in fixtures:
         home, away = fixture.get("team_h"), fixture.get("team_a")
@@ -76,7 +100,8 @@ def build_recommendations(
         chance = player.get("chance_of_playing_next_round")
         risk = player.get("status", "a") != "a" or (chance is not None and chance < 75)
         fixture_boost = (6 - fdr) * 0.35 if fdr else 0
-        score = xpts * 0.56 + form * 0.14 + elite_owned * 0.08 + elite_captained * 0.16 + fixture_boost - (6 if risk else 0)
+        model_support = not risk and (xpts >= 4.5 or (xpts >= 3.8 and form >= 4.0))
+        score = xpts * 0.62 + form * 0.12 + elite_owned * 0.045 + elite_captained * 0.10 + fixture_boost - (6 if risk else 0)
         return {
             **pick,
             "xpts": round(xpts, 2),
@@ -87,6 +112,9 @@ def build_recommendations(
             "fdr": fdr,
             "risk": risk,
             "news": player.get("news", ""),
+            "model_support": model_support,
+            "elite_core": elite_owned >= 60,
+            "role": _role(elite_owned, model_support, risk),
             "score": round(score, 2),
         }
 
@@ -119,6 +147,46 @@ def build_recommendations(
                 "signal_gain": round(signal_gain, 2),
             })
     transfers.sort(key=lambda item: item["signal_gain"], reverse=True)
+
+    core = [pick for pick in signals if pick["elite_core"] and not pick["risk"]]
+    core_owned = sum(1 for pick in core if pick["element"] in owned_ids)
+    alignment = round(core_owned / max(1, len(core)) * 100, 1) if core else 100.0
+    target_alignment = 82 if gameweek <= 4 else 78 if gameweek <= 8 else 72
+    if gameweek <= 4 and alignment < target_alignment:
+        phase = "CATCH"
+        phase_reason = "Under-aligned with the validated elite core: converge before taking unnecessary variance."
+    elif alignment >= target_alignment:
+        phase = "MATCH"
+        phase_reason = "Core structure is competitive: preserve the baseline and use only model-supported deviations."
+    else:
+        phase = "ATTACK"
+        phase_reason = "Alignment is below target outside the early catch window: use selective leverage rather than blind convergence."
+
+    competitive = {
+        "phase": phase,
+        "phase_reason": phase_reason,
+        "alignment": alignment,
+        "target_alignment": target_alignment,
+        "core_owned": core_owned,
+        "core_size": len(core),
+        "critical_missing": sorted(
+            (pick for pick in core if pick["element"] not in owned_ids and pick["model_support"]),
+            key=lambda pick: pick["elite_ownership"],
+            reverse=True,
+        )[:6],
+        "model_edges": sorted(
+            (pick for pick in signals if pick["element"] not in owned_ids and pick["role"] == "CONTROLLED_EDGE"),
+            key=lambda pick: pick["score"],
+            reverse=True,
+        )[:6],
+        "disagreements": sorted(
+            (pick for pick in signals if pick["role"] == "INVESTIGATE"),
+            key=lambda pick: pick["elite_ownership"],
+            reverse=True,
+        )[:6],
+        "weights": _calibration_weights(gameweek),
+    }
+
     return {
         "elite_count": len(elite),
         "elite_overlap": sum(1 for pick in squad if ownership_by_id.get(pick["element"], 0) > 0),
@@ -127,6 +195,7 @@ def build_recommendations(
         "captains": sorted(starters, key=lambda pick: pick["score"], reverse=True)[:4],
         "risks": [pick for pick in squad if pick["risk"]],
         "missing_elite_players": missing[:6],
+        "competitive": competitive,
     }
 
 
