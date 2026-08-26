@@ -92,6 +92,7 @@ class RecommendationResponse(BaseModel):
     captains: list[dict[str, Any]]
     risks: list[dict[str, Any]]
     missing_elite_players: list[dict[str, Any]]
+    competitive: dict[str, Any]
     disclaimer: str
 
 
