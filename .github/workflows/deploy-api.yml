@@ -34,7 +34,11 @@ jobs:
           service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
       - uses: google-github-actions/setup-gcloud@v3
       - name: Build and deploy Cloud Run API
-        run: gcloud builds submit --project "${{ vars.GCP_PROJECT_ID }}" --config cloudbuild.api.yaml .
+        run: >-
+          gcloud builds submit
+          --project "${{ vars.GCP_PROJECT_ID }}"
+          --gcs-source-staging-dir "gs://${{ vars.GCP_PROJECT_ID }}-fpl-github-build-source/source"
+          --config cloudbuild.api.yaml .
       - name: Verify production API
         run: |
           python - <<'PY'
@@ -49,4 +53,3 @@ jobs:
           assert control["execution_authority"] == "telegram"
           print("Cloud Run API and read-only bridge are healthy")
           PY
-
