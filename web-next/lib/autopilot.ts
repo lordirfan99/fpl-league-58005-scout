@@ -8,6 +8,17 @@ export interface ShadowTransfer { out_name?: string; in_name?: string; position?
 export interface ShadowWeek { gw_offset?: number; formation?: string; transfers?: ShadowTransfer[]; transfer_count?: number; hits?: number; free_transfers_before?: number; bank_after?: number; mean_points_with_captain?: number; captain?: string; vice?: string }
 export interface ShadowPlan { planner?: string; planner_version?: string; mode?: string; scenario?: string; status?: string; horizon?: number; objective?: number; risk_penalty?: number; bench_weight?: number; flexibility_weight?: number; max_transfers_per_gw?: number; candidate_pool_size?: number; weights?: number[]; first_action?: ShadowTransfer | null; weeks?: ShadowWeek[] }
 export interface ShadowV3 { model?: string; projection_version?: string; planner_mode?: string; planner_version?: string; gw?: number; generated_at?: string; deadline?: string; calibration?: { n?: number; mae?: number | null; rmse?: number | null; bias?: number | null }; captain?: ShadowPlayer; multigw_plan?: ShadowPlan; scenarios?: Record<string, ShadowPlan>; planner_errors?: unknown[]; squad?: ShadowPlayer[]; top_candidates?: ShadowPlayer[] }
+export interface DecisionRoute { moves?: Array<{ out?: string; in?: string; hit?: boolean }>; horizon_gain?: number; net_after_hit?: number; projection_starts_gw?: number }
+export interface DecisionSummary {
+  recommended_action?: string; reason?: string; approval_scope?: string; template_candidate_gate_applied?: boolean;
+  formation?: { selected?: string; template?: string; explanation?: string };
+  horizon?: { metric?: string; current_weighted?: number; proposed_weighted?: number; rows?: Array<{ gw?: number; weight?: number; current?: number; proposed?: number; gain?: number }> };
+  roadmap?: Array<{ gw?: number; action?: string; status?: string; route?: DecisionRoute | null }>;
+  alternatives?: { best_paid_transfer?: DecisionRoute | null; paid_transfer_allowed?: boolean };
+  uncertainty?: { mean_with_captain?: number; outcome_low?: number; outcome_high?: number; label?: string; calibration?: { n?: number; mae?: number; rmse?: number; bias?: number } };
+  template_comparison?: { formation?: string; owned?: Array<{ name?: string }>; missing?: Array<{ name?: string; position?: string; elite_percentage?: number; cash_affordable_with_one_move?: boolean | null }>; outside?: Array<{ name?: string; position?: string }> };
+  data_health?: { account_squad_synced?: boolean; free_transfers_synced?: boolean; free_transfers?: number; league_snapshot_age_hours?: number | null; league_context_ready?: boolean; deadline_safety?: string; minutes_to_deadline?: number };
+}
 export interface AutopilotPlan {
   gw?: number; generated_at?: string; deadline?: string; status?: string; model_version?: string; engine_display?: string; engine_note?: string;
   transfers?: Array<{ in_name?: string; out_name?: string; out_pos?: string; gain?: number; gain_gw1?: number; hit?: boolean }>;
@@ -15,6 +26,7 @@ export interface AutopilotPlan {
   current_xpts?: number; target_xpts?: number; target_xi_xpts?: number; target_scoring_xpts?: number; target_net_scoring_xpts?: number; horizon_gain?: number;
   validation?: Record<string, boolean | number>; odds_note?: string; paid_transfer_note?: string; v3_shadow_progress?: string;
   league_intelligence?: { applied?: boolean; mode?: string; reason?: string };
+  competitive?: Record<string, unknown>; decision_summary?: DecisionSummary;
 }
 export interface AutopilotData {
   bridge_version: string; execution_authority: string; writes_enabled: boolean;

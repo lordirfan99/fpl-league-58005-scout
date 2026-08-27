@@ -94,6 +94,10 @@ def safe_plan(raw: dict[str, Any]) -> dict[str, Any] | None:
         "paid_transfer_note": raw.get("paid_transfer_note"),
         "league_intelligence": raw.get("league_intelligence", {}),
         "v3_shadow_progress": raw.get("v3_shadow_progress"),
+        # Canonical read-only V4 decision contract. Telegram and the website
+        # render these same persisted fields; neither surface recomputes them.
+        "competitive": raw.get("competitive", {}),
+        "decision_summary": raw.get("decision_summary", {}),
     }
 
 
