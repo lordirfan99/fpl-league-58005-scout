@@ -39,3 +39,10 @@ html,body{max-width:100%;overflow-x:hidden}
 }
 .elite-manager-card{content-visibility:auto;contain-intrinsic-size:70px}
 .add-league{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}.add-league input{min-width:0;width:130px;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);font-size:10px;color:var(--ink)}.add-league button{padding:9px 12px;border:0;border-radius:9px;background:var(--purple);color:#fff;font-size:9px;font-weight:800;cursor:pointer}.add-league button:disabled{opacity:.45;cursor:default}@media(max-width:520px){.add-league input{flex:1;width:100%}.add-league button{width:100%}}
+
+/* Long model identifiers must shrink inside the two-column phone grid. */
+@media(max-width:720px){
+  .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .metric-card{min-width:0}
+  .metric-card strong{overflow-wrap:anywhere}
+}
