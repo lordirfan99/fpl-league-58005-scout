@@ -15,16 +15,20 @@ export default async function AutopilotPage() {
   const source = decision?.source_manifest;
   const sourceReady = source?.status === "ready";
   const validations = Object.entries(plan?.validation ?? {}).filter(([, value]) => typeof value === "boolean");
+  const candidate = plan?.model_candidate;
+  const candidateGws = candidate?.evaluated_gws?.length ?? 0;
+  const candidateRows = candidate?.rows ?? 0;
 
   return <div className="page-stack">
-    <PageHeader eyebrow="GCP AUTOPILOT" title="V4.1 decision control room" description="The same canonical plan used by Telegram. This website never recomputes or executes a decision." updated={plan?.generated_at ? new Date(plan.generated_at).toLocaleString("en-MY", { dateStyle: "medium", timeStyle: "short" }) : undefined} />
+    <PageHeader eyebrow="GCP AUTOPILOT" title="V4 decision control room" description="The same canonical plan used by Telegram. V4.2 remains shadow-only until every promotion gate passes." updated={plan?.generated_at ? new Date(plan.generated_at).toLocaleString("en-MY", { dateStyle: "medium", timeStyle: "short" }) : undefined} />
     <section className="decision-hero"><div><span className="hero-kicker">LIVE PLAN · GW{plan?.gw ?? dashboard.gw} · {decision?.team_diff?.approval_action ?? "REVIEW"}</span><h2>{move ? <>{move.out_name} <ArrowRight size={22} /> {move.in_name}</> : action}</h2><p>{decision?.reason ?? "No canonical decision is available."}</p></div><div className="hero-score"><span>XI + captain</span><strong>{number(decision?.uncertainty?.mean_with_captain ?? plan?.target_net_scoring_xpts ?? dashboard.projected_xpts)}</strong></div></section>
     <section className="metric-grid">
       <MetricCard label="Gameweek" value={`GW${plan?.gw ?? dashboard.gw ?? "—"}`} detail={dashboard.deadline?.hours != null ? `${dashboard.deadline.hours}h to deadline` : "Deadline TBC"} />
       <MetricCard label="Three-GW utility" value={number(plan?.horizon_gain)} detail="Risk-adjusted gain" tone="positive" />
-      <MetricCard label="Optimizer" value={decision?.optimizer?.version ?? plan?.optimizer_version ?? "—"} detail={`${decision?.optimizer?.name ?? "horizon MILP"} · ${decision?.optimizer?.status ?? "unknown"}`} />
+      <MetricCard label="Projection" value={plan?.projection_version ?? plan?.model_version ?? "—"} detail={`${decision?.optimizer?.name ?? "horizon MILP"} ${decision?.optimizer?.version ?? plan?.optimizer_version ?? ""} · ${decision?.optimizer?.status ?? "unknown"}`} />
       <MetricCard label="Source contract" value={sourceReady ? "READY" : "SAFE MODE"} detail={`Run ${plan?.run_id?.slice(0, 12) ?? "unknown"}`} tone={sourceReady ? "positive" : "warning"} />
     </section>
+    {candidate ? <section className="surface"><div className="section-heading"><div><span>CHAMPION–CANDIDATE</span><h2>{candidate.version ?? "competitive-v4.2-shadow"}</h2><p>{candidate.eligible_for_owner_approval ? "All measured gates passed. Explicit owner approval is available; the current plan remains unchanged." : "Collecting official post-deadline evidence. Production remains on V4.0."}</p></div><span className="section-chip">{candidate.status ?? "collecting"}</span></div><div className="validation-grid"><div className={candidateGws >= 6 ? "passed" : "failed"}>{candidateGws >= 6 ? <ShieldCheck /> : <Clock3 />}<span>{candidateGws}/6 completed shadow GWs</span></div><div className={candidateRows >= 500 ? "passed" : "failed"}>{candidateRows >= 500 ? <ShieldCheck /> : <Clock3 />}<span>{candidateRows}/500 paired player rows</span></div>{Object.entries(candidate.checks ?? {}).map(([key, passed]) => <div key={key} className={passed ? "passed" : "failed"}>{passed ? <ShieldCheck /> : <CircleAlert />}<span>{key.replaceAll("_", " ")}</span></div>)}</div><p className="execution-note"><strong>Safety:</strong> this dashboard is read-only. Candidate evidence cannot promote the model or execute an FPL write.</p></section> : null}
     {decision ? <section className="surface">
       <div className="section-heading"><div><span>ONE CANONICAL DECISION</span><h2>{action} · {decision.formation?.selected ?? "—"}</h2><p>{decision.formation?.explanation}</p></div><span className="section-chip">Schema v{decision.schema_version ?? plan?.schema_version ?? "—"}</span></div>
       <div className="validation-grid"><div className="passed"><ShieldCheck /><span>{decision.approval_scope}</span></div><div className={sourceReady ? "passed" : "failed"}><Radio /><span>Official {source?.official_fpl?.status ?? "unknown"} · account {source?.account?.status ?? "unknown"} · league {source?.league?.status ?? "unknown"}</span></div></div>
@@ -42,4 +46,4 @@ export default async function AutopilotPage() {
   </div>;
 }
 
-function Disconnected() { return <div className="page-stack"><PageHeader eyebrow="GCP AUTOPILOT" title="V4.1 decision control room" description="The shared Telegram and dashboard plan." /><section className="surface bot-disconnected"><Bot /><h2>Secure bridge not connected</h2><p>The read-only bot plan is temporarily unavailable. Telegram execution remains disabled until a fresh plan is generated.</p></section></div>; }
+function Disconnected() { return <div className="page-stack"><PageHeader eyebrow="GCP AUTOPILOT" title="V4 decision control room" description="The shared Telegram and dashboard plan." /><section className="surface bot-disconnected"><Bot /><h2>Secure bridge not connected</h2><p>The read-only bot plan is temporarily unavailable. Telegram execution remains disabled until a fresh plan is generated.</p></section></div>; }

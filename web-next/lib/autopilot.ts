@@ -25,14 +25,16 @@ export interface DecisionSummary {
   data_health?: { account_squad_synced?: boolean; free_transfers_synced?: boolean; free_transfers?: number; league_snapshot_age_hours?: number | null; league_context_ready?: boolean; deadline_safety?: string; minutes_to_deadline?: number };
 }
 export interface AutopilotPlan {
-  schema_version?: number; run_id?: string; optimizer_version?: string; plan_id?: string;
+  schema_version?: number; run_id?: string; optimizer_version?: string; projection_version?: string; plan_id?: string;
   gw?: number; generated_at?: string; deadline?: string; status?: string; model_version?: string; engine_display?: string; engine_note?: string;
   transfers?: Array<{ in_name?: string; out_name?: string; out_pos?: string; gain?: number; gain_gw1?: number; hit?: boolean }>;
   target_starters?: AutopilotPlayer[]; bench?: AutopilotPlayer[]; captain?: AutopilotPlayer; vice?: AutopilotPlayer;
   current_xpts?: number; target_xpts?: number; target_xi_xpts?: number; target_scoring_xpts?: number; target_net_scoring_xpts?: number; horizon_gain?: number;
   validation?: Record<string, boolean | number>; data_note?: string; paid_transfer_note?: string;
   league_intelligence?: { applied?: boolean; mode?: string; reason?: string };
-  competitive?: Record<string, unknown>; decision_summary?: DecisionSummary;
+  competitive?: Record<string, unknown>;
+  model_candidate?: { version?: string; status?: string; evaluated_gws?: number[]; rows?: number; eligible_for_owner_approval?: boolean; checks?: Record<string, boolean> };
+  decision_summary?: DecisionSummary;
 }
 export interface AutopilotData {
   bridge_version: string; execution_authority: string; writes_enabled: boolean;

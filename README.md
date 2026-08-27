@@ -2,6 +2,17 @@
 
 Production FPL decision, league-intelligence and competitive-alignment system for the 2026/27 season.
 
+## V4.2 shadow-model integration (28 Aug 2026)
+
+The Autopilot control room now reads the canonical plan's `projection_version` and
+`model_candidate` fields. It displays V4.2 shadow progress, paired-row count, individual
+promotion gates and owner-approval eligibility without duplicating the model in the browser.
+The dashboard remains strictly read-only: it cannot promote a candidate or write to FPL.
+
+Production stays on `competitive-v4.0` with the V4.1 horizon optimizer. V4.2 requires six
+completed live shadow gameweeks, at least 500 paired player rows, accuracy/calibration/policy
+gates and explicit owner approval before the runtime registry can activate it.
+
 - Dashboard: https://fpl-scout-intelligence.netlify.app
 - Personal FPL entry: `2797967`
 - Tracked leagues: `58005` (KK Old Boys) and `131997` (Overall IFE)
