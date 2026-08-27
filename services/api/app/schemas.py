@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class ApiMeta(BaseModel):
+    run_id: str | None = None
     generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     snapshot_at: datetime | None = None
     source: str = "snapshot"

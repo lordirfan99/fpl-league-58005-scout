@@ -270,7 +270,8 @@ def _meta(snapshot: dict) -> ApiMeta:
     stale = freshness_hours is None or freshness_hours > 12
     quality_status, quality_issues = snapshot_quality(snapshot)
     return ApiMeta(
-        source="snapshot", snapshot_at=snapshot_at, stale=stale, freshness_hours=freshness_hours,
+        run_id=snapshot.get("run_id"), source="snapshot", snapshot_at=snapshot_at,
+        stale=stale, freshness_hours=freshness_hours,
         snapshot_gameweek=int(snapshot.get("gw")) if snapshot.get("gw") is not None else None,
         quality_status=quality_status, quality_issues=quality_issues,
     )

@@ -25,7 +25,7 @@ ENGINE_FILE = PROCESSED / "engine_state.json"
 AUTO_FILE = PROCESSED / "auto_state.json"
 HEARTBEAT_FILE = PROCESSED / "bot_heartbeat.txt"
 
-app = FastAPI(title="FPL Autopilot Dashboard Bridge", version="1.1.0")
+app = FastAPI(title="FPL Autopilot Dashboard Bridge", version="2.0.0")
 _cache: dict[str, Any] = {"expires_at": 0.0, "payload": None}
 _cache_lock = threading.Lock()
 
@@ -57,6 +57,9 @@ def safe_plan(raw: dict[str, Any]) -> dict[str, Any] | None:
     if not raw:
         return None
     return {
+        "schema_version": raw.get("schema_version"),
+        "run_id": raw.get("run_id"),
+        "optimizer_version": raw.get("optimizer_version"),
         "team_id": raw.get("team_id"),
         "gw": raw.get("gw"),
         "generated_at": raw.get("generated_at"),
@@ -89,11 +92,12 @@ def safe_plan(raw: dict[str, Any]) -> dict[str, Any] | None:
         "pre_transfer_squad_ids": raw.get("pre_transfer_squad_ids", []),
         "validation": raw.get("validation", {}),
         "chip_suggestion": raw.get("chip_suggestion"),
-        "odds_note": raw.get("odds_note"),
+        "data_note": raw.get("data_note"),
         "bonus_note": raw.get("bonus_note"),
         "paid_transfer_note": raw.get("paid_transfer_note"),
         "league_intelligence": raw.get("league_intelligence", {}),
-        "v3_shadow_progress": raw.get("v3_shadow_progress"),
+        "horizon_plan": raw.get("horizon_plan", {}),
+        "captain_rankings": raw.get("captain_rankings", []),
         # Canonical read-only V4 decision contract. Telegram and the website
         # render these same persisted fields; neither surface recomputes them.
         "competitive": raw.get("competitive", {}),
@@ -228,8 +232,6 @@ def build_control_centre() -> dict[str, Any]:
             "dashboard": dashboard,
             "plan": plan,
             "predictions": prediction_rows(gw),
-            "engine": read_json(ENGINE_FILE),
-            "shadow_v3": latest_shadow(),
             "automation": read_json(AUTO_FILE),
             "heartbeat": {"value": heartbeat, "modified_unix": heartbeat_mtime},
         }
