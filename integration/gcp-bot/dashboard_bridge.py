@@ -66,6 +66,8 @@ def safe_plan(raw: dict[str, Any]) -> dict[str, Any] | None:
         "deadline": raw.get("deadline"),
         "status": raw.get("status"),
         "model_version": raw.get("model_version"),
+        "projection_version": raw.get("projection_version"),
+        "model_candidate": raw.get("model_candidate", {}),
         "plan_id": raw.get("plan_id"),
         "input_fp": raw.get("input_fp"),
         "engine_display": raw.get("engine_display"),
