@@ -2,12 +2,13 @@ import "server-only";
 
 const API_BASE = process.env.FPL_API_BASE_URL?.replace(/\/$/, "") ?? "http://127.0.0.1:8080";
 
-export interface AutopilotPlayer { id?: number; name?: string; position?: string; pos?: string; club?: number | string; xpts?: number; xpts_horizon?: number; status?: string; news?: string }
+export interface AutopilotPlayer { id?: number; name?: string; position?: string; pos?: string; club?: number | string; cost?: number; xpts?: number; xpts_horizon?: number; status?: string; news?: string; starter?: boolean; role?: string }
 export interface ShadowPlayer extends AutopilotPlayer { xpts_floor?: number; xpts_upside?: number; xpts_variance?: number; p_start?: number; expected_minutes?: number; xpts_by_gw?: number[]; variance_by_gw?: number[]; components?: Record<string, number> }
 export interface ShadowTransfer { out_name?: string; in_name?: string; position?: string; out_pos?: string; in_pos?: string }
 export interface ShadowWeek { gw_offset?: number; formation?: string; transfers?: ShadowTransfer[]; transfer_count?: number; hits?: number; free_transfers_before?: number; bank_after?: number; mean_points_with_captain?: number; captain?: string; vice?: string }
 export interface ShadowPlan { planner?: string; planner_version?: string; mode?: string; scenario?: string; status?: string; horizon?: number; objective?: number; risk_penalty?: number; bench_weight?: number; flexibility_weight?: number; max_transfers_per_gw?: number; candidate_pool_size?: number; weights?: number[]; first_action?: ShadowTransfer | null; weeks?: ShadowWeek[] }
 export interface ShadowV3 { model?: string; projection_version?: string; planner_mode?: string; planner_version?: string; gw?: number; generated_at?: string; deadline?: string; calibration?: { n?: number; mae?: number | null; rmse?: number | null; bias?: number | null }; captain?: ShadowPlayer; multigw_plan?: ShadowPlan; scenarios?: Record<string, ShadowPlan>; planner_errors?: unknown[]; squad?: ShadowPlayer[]; top_candidates?: ShadowPlayer[] }
+export interface ShadowV42 { model_version?: string; champion_version?: string; artifact_type?: string; gw?: number; generated_at?: string; deadline?: string; history_rows?: number; formation?: string; captain_id?: number; lineup?: ShadowPlayer[]; bench?: ShadowPlayer[]; transfers?: ShadowTransfer[]; mean_points_with_captain?: number; robust_points_with_captain?: number; optimizer_status?: string; optimizer_error?: string | null }
 export interface DecisionRoute { moves?: Array<{ out?: string; in?: string; hit?: boolean }>; horizon_gain?: number; net_after_hit?: number; projection_starts_gw?: number }
 export interface DecisionSummary {
   schema_version?: number; run_id?: string; plan_id?: string;
@@ -42,6 +43,7 @@ export interface AutopilotData {
   plan?: AutopilotPlan | null; predictions?: AutopilotPlayer[];
   engine?: { promoted?: boolean; shadow_evaluated_gws?: number; promotion_candidate?: boolean; promotion_status?: string; report?: { evaluated_gws?: number[]; min_gws_required?: number; gate_met?: boolean; passed?: boolean; reason?: string; promotion_policy?: string } };
   shadow_v3?: ShadowV3 | null;
+  shadow_v42?: ShadowV42 | null;
   automation?: Record<string, unknown>; heartbeat?: { value?: string; modified_unix?: number };
 }
 

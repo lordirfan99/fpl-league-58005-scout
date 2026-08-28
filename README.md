@@ -9,6 +9,13 @@ The Autopilot control room now reads the canonical plan's `projection_version` a
 promotion gates and owner-approval eligibility without duplicating the model in the browser.
 The dashboard remains strictly read-only: it cannot promote a candidate or write to FPL.
 
+The **Model XIs** tab compares the current-GW V4.0 champion, V4.2 shadow and V5 laboratory
+selections on full pitch views. Each panel shows formation, XI + captain xPts, robust score
+where available, captain, bench order, proposed transfers and players unique versus production.
+V5 currently selects a legal XI from the live 15 only and is explicitly marked as having no
+transfer model. The bridge exports only the sanitized V4.2 team sheet; it exposes no execution
+controls. A stale candidate from another gameweek is refused rather than presented as valid.
+
 Production stays on `competitive-v4.0` with the V4.1 horizon optimizer. V4.2 requires six
 completed live shadow gameweeks, at least 500 paired player rows, accuracy/calibration/policy
 gates and explicit owner approval before the runtime registry can activate it.

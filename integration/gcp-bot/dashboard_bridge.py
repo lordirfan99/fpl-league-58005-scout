@@ -25,7 +25,7 @@ ENGINE_FILE = PROCESSED / "engine_state.json"
 AUTO_FILE = PROCESSED / "auto_state.json"
 HEARTBEAT_FILE = PROCESSED / "bot_heartbeat.txt"
 
-app = FastAPI(title="FPL Autopilot Dashboard Bridge", version="2.0.0")
+app = FastAPI(title="FPL Autopilot Dashboard Bridge", version="2.1.0")
 _cache: dict[str, Any] = {"expires_at": 0.0, "payload": None}
 _cache_lock = threading.Lock()
 
@@ -213,6 +213,52 @@ def latest_shadow() -> dict[str, Any] | None:
     }
 
 
+def latest_v42_shadow() -> dict[str, Any] | None:
+    """Expose only the latest candidate team sheet and projection evidence."""
+    candidates: list[tuple[int, Path]] = []
+    for path in PROCESSED.glob("v42_shadow_gw*.json"):
+        try:
+            candidates.append((int(path.stem.removeprefix("v42_shadow_gw")), path))
+        except ValueError:
+            continue
+    if not candidates:
+        return None
+    raw = read_json(max(candidates, key=lambda item: item[0])[1])
+    if not raw:
+        return None
+    first_week = raw.get("first_week") if isinstance(raw.get("first_week"), dict) else {}
+    lineup_ids = [int(value) for value in first_week.get("lineup_ids", raw.get("lineup_ids", []))]
+    bench_ids = [int(value) for value in first_week.get("bench_ids", [])]
+    players = {
+        int(item["id"]): item for item in raw.get("players", [])
+        if isinstance(item, dict) and item.get("id") is not None
+    }
+    lineup = [shadow_player(players[element]) for element in lineup_ids if element in players]
+    bench = [shadow_player(players[element]) for element in bench_ids if element in players]
+    formation = "-".join(str(sum(1 for player in lineup if player.get("position") == position))
+                         for position in ("DEF", "MID", "FWD")) if lineup else None
+    return {
+        "model_version": raw.get("model_version"),
+        "champion_version": raw.get("champion_version"),
+        "artifact_type": raw.get("artifact_type"),
+        "gw": raw.get("gw"),
+        "generated_at": raw.get("generated_at"),
+        "deadline": raw.get("deadline"),
+        "history_rows": raw.get("history_rows"),
+        "formation": formation,
+        "captain_id": first_week.get("captain_id", raw.get("captain_id")),
+        "lineup": lineup,
+        "bench": bench,
+        "transfers": [shadow_action(item) for item in first_week.get("transfers", [])
+                      if isinstance(item, dict)],
+        "mean_points_with_captain": first_week.get("mean_points_with_captain"),
+        "robust_points_with_captain": first_week.get("robust_points_with_captain"),
+        "optimizer_status": (raw.get("optimizer") or {}).get("status")
+        if isinstance(raw.get("optimizer"), dict) else None,
+        "optimizer_error": raw.get("optimizer_error"),
+    }
+
+
 def build_control_centre() -> dict[str, Any]:
     with _cache_lock:
         if _cache["payload"] is not None and float(_cache["expires_at"]) > time.time():
@@ -234,6 +280,7 @@ def build_control_centre() -> dict[str, Any]:
             "dashboard": dashboard,
             "plan": plan,
             "predictions": prediction_rows(gw),
+            "shadow_v42": latest_v42_shadow(),
             "automation": read_json(AUTO_FILE),
             "heartbeat": {"value": heartbeat, "modified_unix": heartbeat_mtime},
         }

@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeftRight, BarChart3, Beaker, Bot, Cpu, LayoutDashboard, ListChecks, RefreshCcw, Shield, Trophy, Users } from "lucide-react";
+import { ArrowLeftRight, BarChart3, Beaker, Bot, Cpu, Layers3, LayoutDashboard, ListChecks, RefreshCcw, Shield, Trophy, Users } from "lucide-react";
 
 const navigation = [
   { href: "/my-team", label: "My Team", icon: LayoutDashboard },
   { href: "/assistant", label: "Assistant", icon: Bot },
   { href: "/autopilot", label: "GCP Autopilot", icon: Cpu },
   { href: "/v5-lab", label: "V5 Lab", icon: Beaker },
+  { href: "/model-compare", label: "Model XIs", icon: Layers3 },
   { href: "/planner", label: "Planner", icon: ListChecks },
   { href: "/league", label: "League Explorer", icon: Users },
   { href: "/elite", label: "Elite 5%", icon: Trophy },
