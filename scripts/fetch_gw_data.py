@@ -10,6 +10,7 @@ Usage: python3 fetch_gw_data.py [--gw <num>] [--league 58005 131997] [--max 3000
 """
 
 import urllib.request
+import urllib.error
 import json
 import time
 import os
@@ -24,13 +25,27 @@ REPORTS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "reports"
 
 
 def api_get(path, retries=3):
-    """Fetch from FPL API with retry."""
+    """Fetch from FPL API with retry.
+
+    HTTP 404 is treated as a definitive "not found" and NOT retried —
+    the FPL transfers endpoint returns 404 for any team that made 0
+    transfers in a GW. Retrying/backing off on 404 wastes ~3s per hit
+    and there are thousands of them.
+    """
     url = f"{BASE_URL}/{path.lstrip('/')}"
     for attempt in range(retries):
         try:
             req = urllib.request.Request(url, headers=HEADERS)
             resp = urllib.request.urlopen(req, timeout=30)
             return json.loads(resp.read().decode())
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                return None  # definitive empty; don't retry
+            if attempt < retries - 1:
+                time.sleep(2 ** attempt)
+            else:
+                print(f"  ⚠️ Failed {url}: {e}", file=sys.stderr)
+                return None
         except Exception as e:
             if attempt < retries - 1:
                 time.sleep(2 ** attempt)
@@ -96,8 +111,25 @@ def build_player_map(bootstrap):
 
 
 def get_league_standings(league_id, gw):
-    """Get league standings for a given GW. Paginates through all pages."""
+    """Get league standings for a given GW. Paginates through all pages.
+
+    NOTE: The FPL standings endpoint must be paginated with the
+    ``?page_standings=N&new_entries=0`` parameter form. Using ``?page=N``
+    triggers an FPL API quirk where every page returns the FIRST page again
+    while ``has_next`` stays ``True`` forever, causing an infinite loop.
+    We also cap pages and dedupe by entry_id as a hard safety net.
+    """
     data = api_get(f"leagues-classic/{league_id}/standings/")
+    if not data:
+        # Hard failure on the FIRST standings call — do NOT fall through to a
+        # stale/empty substitutes table. FPL returns 503 under heavy load or an
+        # outage; retry a few times with backoff before giving up.
+        for attempt in range(3):
+            print(f"  ⚠️ Standings for league {league_id} empty (retry {attempt + 1}/3)...", file=sys.stderr)
+            time.sleep(5 * (attempt + 1))
+            data = api_get(f"leagues-classic/{league_id}/standings/")
+            if data:
+                break
     if not data:
         return []
 
@@ -114,18 +146,26 @@ def get_league_standings(league_id, gw):
             'rank_sort': r.get('rank_sort', 0),
         })
 
-    # Paginate
+    # Paginate using page_standings + new_entries form (bounded for safety)
     has_more = standings.get('has_next', False)
     page = 2
-    while has_more:
-        data = api_get(f"leagues-classic/{league_id}/standings/?page={page}")
+    seen_ids = {r['entry_id'] for r in results}
+    max_pages = 500
+    while has_more and page <= max_pages:
+        data = api_get(f"leagues-classic/{league_id}/standings/?page_standings={page}&new_entries=0")
         if not data:
             break
         standings = data.get('standings', {})
+        added_new = False
         for r in standings.get('results', []):
+            eid = r.get('entry', 0)
+            if eid in seen_ids:
+                continue  # skip duplicates; loop terminates if page is all dupes
+            seen_ids.add(eid)
+            added_new = True
             results.append({
                 'rank': r.get('rank', 0),
-                'entry_id': r.get('entry', 0),
+                'entry_id': eid,
                 'entry_name': r.get('entry_name', ''),
                 'player_name': r.get('player_name', ''),
                 'total_points': r.get('total', 0),
@@ -133,6 +173,9 @@ def get_league_standings(league_id, gw):
                 'rank_sort': r.get('rank_sort', 0),
             })
         has_more = standings.get('has_next', False)
+        if not added_new and page > 2:
+            # No new entries on this page → standings exhausted (broken endpoint)
+            break
         page += 1
         time.sleep(0.3)
 
@@ -305,6 +348,9 @@ def main():
                         help='League IDs (space-separated, default: 58005 131997)')
     parser.add_argument('--max', type=int, default=3000, help='Max entries to fetch per league')
     parser.add_argument('--output', help='Output file path base')
+    parser.add_argument('--force-stale', action='store_true',
+                        help='If live standings fetch fails, build the report from stale scout data anyway '
+                             '(operator override — normally we abort to avoid emitting misleading data)')
     args = parser.parse_args()
 
     league_ids = args.league
@@ -350,17 +396,29 @@ def main():
         print(f"✅ Found {len(standings)} entries in standings", file=sys.stderr)
 
         if not standings:
-            # Fall back to pre-season scout data
-            print(f"⚠️ Standings empty — using scout data for league {lid}", file=sys.stderr)
-            scout_entries = load_entry_ids_from_scout_data([lid])
-            standings = [{
-                'entry_id': e['entry_id'],
-                'entry_name': e.get('entry_name', ''),
-                'player_name': e.get('player_name', ''),
-                'rank': i + 1,
-                'total_points': 0,
-                'last_rank': 0,
-            } for i, e in enumerate(scout_entries.get(lid, []))]
+            if args.force_stale:
+                # Explicit operator override — only used when you KNOW the live
+                # API is down and a stale/zeroed table is acceptable.
+                print(f"⚠️ [--force-stale] Standings empty — using scout data for league {lid}", file=sys.stderr)
+                scout_entries = load_entry_ids_from_scout_data([lid])
+                standings = [{
+                    'entry_id': e['entry_id'],
+                    'entry_name': e.get('entry_name', ''),
+                    'player_name': e.get('player_name', ''),
+                    'rank': i + 1,
+                    'total_points': 0,
+                    'last_rank': 0,
+                } for i, e in enumerate(scout_entries.get(lid, []))]
+            else:
+                # Abort: an empty live standings table during a real (finished)
+                # GW means the FPL API is down/returning 503. Producing a report
+                # from stale scout data with fabricated ranks and 0 points would
+                # be misleading. Fail loudly instead.
+                print(f"\n❌ ABORT: live standings for league {lid} returned 0 entries "
+                      f"(FPL API unavailable?). Refusing to build a stale report.\n"
+                      f"   Fix the outage, then re-run. Use --force-stale ONLY if "
+                      f"you explicitly accept a stale-data report.", file=sys.stderr)
+                return 1
 
         # Deduplicate against all_entry_ids_set
         unique_for_league = []
@@ -375,7 +433,9 @@ def main():
     total_unique = len(all_entry_ids_set)
     print(f"\n🎯 Total unique entries: {total_unique}", file=sys.stderr)
 
-    # Fetch data for each unique competitor
+    # Fetch data for each unique competitor.
+    # Iterate in ascending (best) rank order so that if we hit the --max cap,
+    # we drop only the lowest-ranked entries — never elite top teams.
     all_data = {lid: [] for lid in league_ids}
     count = 0
     errors = 0
@@ -389,9 +449,19 @@ def main():
                 entry_id_to_league_entry[eid] = []
             entry_id_to_league_entry[eid].append({'league_id': lid, 'standing': s})
 
-    all_entry_ids = list(all_entry_ids_set)
+    # Deterministic, rank-ordered list of entry IDs (best rank first).
+    # An entry appearing in multiple leagues uses its best (lowest) rank.
+    def _best_rank(infos):
+        return min((i['standing'].get('rank', 10 ** 9) for i in infos), default=10 ** 9)
+
+    ordered = sorted(
+        entry_id_to_league_entry.keys(),
+        key=lambda eid: ( _best_rank(entry_id_to_league_entry[eid]), eid )
+    )
+    all_entry_ids = ordered
+    fetched_so_far = 0
     for i, entry_id in enumerate(all_entry_ids):
-        if i >= args.max:
+        if fetched_so_far >= args.max:
             break
         if i % 50 == 0 and i > 0:
             print(f"  Progress: {i}/{min(len(all_entry_ids), args.max)} (errors: {errors})", file=sys.stderr)
@@ -414,6 +484,7 @@ def main():
 
         all_data[comp_data.get('league_id', 0)].append(comp_data)
         count += 1
+        fetched_so_far += 1
         time.sleep(0.15)
 
     # Output — one file per league
