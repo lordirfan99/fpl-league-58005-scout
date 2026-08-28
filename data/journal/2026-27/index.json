@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "season": "2026-27",
+  "updated_at": "2026-08-25T06:51:39Z",
+  "gameweeks": [
+    {
+      "gameweek": 1,
+      "status": "final",
+      "summary": {
+        "gw_points": 43,
+        "total_points": 43,
+        "overall_rank": 5683594,
+        "league_rank": 626,
+        "elite_average": 46.1,
+        "points_vs_reference": -3.1,
+        "captain": "B.Fernandes",
+        "captain_points": 2,
+        "transfers": 0,
+        "hit_cost": 0,
+        "chip": null,
+        "phase": null,
+        "alignment": null
+      },
+      "quality": {
+        "status": "partial",
+        "issues": [
+          "predeadline_evidence_missing"
+        ]
+      },
+      "record_hash": "57d89e3a2d4a9be8dfd93b2a60bd2137e07cffe519a75bb4ccb3260762b21bf6"
+    }
+  ],
+  "totals": {
+    "completed": 1,
+    "points": 43
+  }
+}

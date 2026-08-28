@@ -4,9 +4,11 @@ from datetime import datetime, timezone
 import hashlib
 import hmac
 import json
+import re
 
 from fastapi import FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
 from .autopilot import AutopilotClient, AutopilotUnavailableError
 from .league_registry import LeagueRegistry
@@ -43,6 +45,7 @@ app.add_middleware(
 repository = SnapshotRepository(settings.data_dir, settings.snapshot_bucket)
 league_registry = LeagueRegistry(settings.data_dir)
 autopilot = AutopilotClient(settings)
+SEASON_PATTERN = re.compile(r"^20\d{2}-\d{2}$")
 
 
 @app.get("/health")
@@ -190,6 +193,45 @@ def fixtures(
         "to_gameweek": to_gw,
         "gameweeks": repository.fixture_horizon(from_gw, to_gw),
     }
+
+
+def _journal_season(value: str) -> str:
+    if not SEASON_PATTERN.fullmatch(value):
+        raise HTTPException(status_code=400, detail="Season must use YYYY-YY format")
+    return value
+
+
+@app.get("/v1/journal")
+def journal_index(season: str = Query(default="2026-27")) -> dict:
+    season = _journal_season(season)
+    try:
+        return repository.journal_index(season)
+    except SnapshotNotFoundError as error:
+        raise HTTPException(status_code=404, detail=f"No journal for season {season}") from error
+
+
+@app.get("/v1/journal/{season}/gw/{gameweek}")
+def journal_gameweek(season: str, gameweek: int) -> dict:
+    season = _journal_season(season)
+    if not 1 <= gameweek <= 38:
+        raise HTTPException(status_code=400, detail="Gameweek must be between 1 and 38")
+    try:
+        return repository.journal_gameweek(season, gameweek)
+    except SnapshotNotFoundError as error:
+        raise HTTPException(status_code=404, detail=f"No {season} GW{gameweek} journal entry") from error
+
+
+@app.get("/v1/journal/{season}/export")
+def journal_export(season: str, filename: str = Query(default="gameweeks.csv")) -> FileResponse:
+    season = _journal_season(season)
+    if filename not in {"gameweeks.csv", "players.csv", "manifest.json", "README.md"}:
+        raise HTTPException(status_code=400, detail="Unsupported journal export")
+    try:
+        path = repository.journal_export_path(season, filename)
+    except SnapshotNotFoundError as error:
+        raise HTTPException(status_code=404, detail="Journal export is not available") from error
+    media_type = "text/csv" if filename.endswith(".csv") else "text/markdown" if filename.endswith(".md") else "application/json"
+    return FileResponse(path, media_type=media_type, filename=f"fpl-journal-{season}-{filename}")
 
 
 @app.get("/v1/elite/{gw}", response_model=EliteResponse)

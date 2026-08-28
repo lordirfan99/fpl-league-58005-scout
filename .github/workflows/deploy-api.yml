@@ -9,6 +9,7 @@ on:
       - "data/bootstrap_cache.json"
       - "data/fixtures_cache.json"
       - "data/gw*_league*_data.json"
+      - "data/journal/**"
       - ".github/workflows/deploy-api.yml"
   workflow_dispatch:
 

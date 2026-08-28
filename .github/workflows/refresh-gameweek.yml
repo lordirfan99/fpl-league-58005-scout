@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 concurrency:
   group: refresh-completed-gameweek
@@ -28,6 +29,13 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+      - run: python -m pip install google-cloud-storage
+      - id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
       - name: Select latest final gameweek
         id: event
         env:
@@ -64,6 +72,11 @@ jobs:
         run: |
           python scripts/generate_analysis.py --gw "${{ steps.event.outputs.gw }}" --league 58005
           python scripts/generate_analysis.py --gw "${{ steps.event.outputs.gw }}" --league 131997
+      - name: Finalize season journal
+        if: steps.event.outputs.refresh == 'true'
+        env:
+          FPL_JOURNAL_BUCKET: ${{ vars.FPL_JOURNAL_BUCKET }}
+        run: python scripts/build_gameweek_journal.py --gw "${{ steps.event.outputs.gw }}"
       - name: Validate snapshot integrity
         if: steps.event.outputs.refresh == 'true'
         env:
@@ -98,6 +111,7 @@ jobs:
           git add "data/gw${GW}_league58005_data.json" "data/gw${GW}_league58005_compact.json" \
                   "data/gw${GW}_league131997_data.json" "data/gw${GW}_league131997_compact.json" \
                   data/bootstrap_cache.json "reports/GW${GW}"
+          git add "data/journal"
           git commit -m "data: finalize GW${GW} league snapshots"
           git push
       - name: Nothing to refresh

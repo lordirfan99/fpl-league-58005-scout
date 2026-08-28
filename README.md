@@ -56,6 +56,17 @@ npm run typecheck
 npm run build
 ```
 
+## Automated season journal
+
+The **Journal** dashboard is the permanent 2026/27 decision and research timeline. An
+hourly workflow preserves a checksummed pre-deadline model bundle in GCS; the completed-GW
+pipeline then joins it with official results, personal-team outcomes and both league reports.
+Public summaries and CSV exports are read-only. Guided Telegram reflections are private by
+default and only an explicitly published lesson can appear publicly.
+
+See [`docs/JOURNAL_SYSTEM.md`](docs/JOURNAL_SYSTEM.md) for lifecycle, recovery, Telegram
+adapter and next-season rollover instructions.
+
 After deployment, `/health` must report `competitive-v4.0`. A green service alone is insufficient: also confirm the expected GW, snapshot timestamp and `quality_status=valid`. The absence of an alert is not proof that an automated refresh succeeded.
 
 ---

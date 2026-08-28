@@ -9,3 +9,6 @@ services/api/.pytest_cache/
 services/api/**/__pycache__/
 .netlify/
 .netlify-deploy-*/
+data/journal-raw/
+data/journal-private/
+data/journal-public-notes/

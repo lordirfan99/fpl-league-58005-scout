@@ -77,3 +77,12 @@ class SnapshotRepository:
 
     def fixture_horizon(self, from_gameweek: int, to_gameweek: int) -> dict[str, list[dict[str, Any]]]:
         return {str(gw): self.fixtures(gw) for gw in range(from_gameweek, to_gameweek + 1)}
+
+    def journal_index(self, season: str) -> dict[str, Any]:
+        return self.read(f"journal/{season}/index.json")
+
+    def journal_gameweek(self, season: str, gameweek: int) -> dict[str, Any]:
+        return self.read(f"journal/{season}/gw{gameweek:02d}.json")
+
+    def journal_export_path(self, season: str, filename: str) -> Path:
+        return self._path(f"journal/{season}/exports/{filename}")

@@ -44,4 +44,11 @@ jobs:
       - run: python -m pytest services/api/tests
         env:
           PYTHONPATH: services/api
-      - run: python -m py_compile integration/gcp-bot/dashboard_bridge.py scripts/run_gw_pipeline.py scripts/fetch_gw_data_fixed.py
+      - run: >-
+          python -m py_compile
+          integration/gcp-bot/dashboard_bridge.py
+          scripts/run_gw_pipeline.py
+          scripts/fetch_gw_data_fixed.py
+          scripts/capture_predeadline_journal.py
+          scripts/build_gameweek_journal.py
+          scripts/journal_notes.py
