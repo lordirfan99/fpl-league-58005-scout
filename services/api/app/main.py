@@ -11,6 +11,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from .autopilot import AutopilotClient, AutopilotUnavailableError
 from .league_registry import LeagueRegistry
 from .recommendations import MODEL_VERSION, build_recommendations, cohort_summary, elite_managers
+from .projection_types import PROJECTION_VERSION
+from .projections import build_projections
 from .repository import SnapshotNotFoundError, SnapshotRepository
 from .schemas import (
     ApiMeta,
@@ -18,6 +20,7 @@ from .schemas import (
     EliteResponse,
     IntegrationStatus,
     LeagueResponse,
+    ProjectionResponse,
     RecommendationResponse,
     TeamResponse,
 )
@@ -151,6 +154,27 @@ def catalog() -> CatalogResponse:
         players=bootstrap.get("elements", []),
         teams=bootstrap.get("teams", []),
         events=bootstrap.get("events", []),
+    )
+
+
+@app.get("/v1/projections/current", response_model=ProjectionResponse)
+def projections_current(
+    gw: int | None = Query(default=None, ge=1, le=38),
+) -> ProjectionResponse:
+    """Return ownership-independent V5 laboratory projections.
+
+    This endpoint is deliberately separate from production recommendations and
+    the Telegram execution route.  Its candidate universe is the full official
+    FPL catalogue, including players no tracked manager owns.
+    """
+    gw = gw or _current_gameweek()
+    target_gw = min(gw + 1, 38)
+    rows = build_projections(repository.bootstrap(), repository.fixtures(target_gw))
+    return ProjectionResponse(
+        meta=ApiMeta(source="projection-v5-lab", quality_status="valid"),
+        gameweek=target_gw,
+        projection_version=PROJECTION_VERSION,
+        players=[row.to_dict() for row in rows],
     )
 
 

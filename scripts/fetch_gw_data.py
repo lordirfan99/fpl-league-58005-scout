@@ -75,6 +75,22 @@ def build_player_map(bootstrap):
             'status': p.get('status', 'a'),
             'chance_of_playing': p.get('chance_of_playing_next_round', 100),
             'news': p.get('news', ''),
+            # Preserve official underlying fields for the isolated V5 lab.
+            'minutes': p.get('minutes', 0), 'starts': p.get('starts', 0),
+            'expected_goals': p.get('expected_goals', 0),
+            'expected_assists': p.get('expected_assists', 0),
+            'expected_goal_involvements': p.get('expected_goal_involvements', 0),
+            'expected_goals_conceded': p.get('expected_goals_conceded', 0),
+            'expected_goals_per_90': p.get('expected_goals_per_90', 0),
+            'expected_assists_per_90': p.get('expected_assists_per_90', 0),
+            'expected_goals_conceded_per_90': p.get('expected_goals_conceded_per_90', 0),
+            'defensive_contribution': p.get('defensive_contribution', 0),
+            'defensive_contribution_per_90': p.get('defensive_contribution_per_90', 0),
+            'saves': p.get('saves', 0), 'saves_per_90': p.get('saves_per_90', 0),
+            'bonus': p.get('bonus', 0), 'bps': p.get('bps', 0),
+            'penalties_order': p.get('penalties_order'),
+            'direct_freekicks_order': p.get('direct_freekicks_order'),
+            'corners_and_indirect_freekicks_order': p.get('corners_and_indirect_freekicks_order'),
         }
     return players
 
@@ -193,6 +209,11 @@ def fetch_competitor_data(entry_id, gw, player_map):
                 'status': player.get('status', 'a'),
                 'chance_of_playing': player.get('chance_of_playing', 100),
                 'news': player.get('news', ''),
+                'minutes': player.get('minutes', 0), 'starts': player.get('starts', 0),
+                'expected_goals': player.get('expected_goals', 0),
+                'expected_assists': player.get('expected_assists', 0),
+                'expected_goals_per_90': player.get('expected_goals_per_90', 0),
+                'expected_assists_per_90': player.get('expected_assists_per_90', 0),
             })
         result['squad'] = squad
 

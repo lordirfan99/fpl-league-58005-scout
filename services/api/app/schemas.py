@@ -73,6 +73,15 @@ class CatalogResponse(BaseModel):
     events: list[dict[str, Any]]
 
 
+class ProjectionResponse(BaseModel):
+    """Read-only V5 laboratory output; never an execution recommendation."""
+
+    meta: ApiMeta
+    gameweek: int
+    projection_version: str
+    players: list[dict[str, Any]]
+
+
 class EliteResponse(BaseModel):
     meta: ApiMeta
     league_id: int

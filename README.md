@@ -30,6 +30,25 @@ gates and explicit owner approval before the runtime registry can activate it.
 | Dashboard writes | Disabled |
 | Last manual documentation verification | 2026-08-26 UTC |
 
+## V5 player-intelligence laboratory
+
+`projection-v5.0-lab` is a separate, read-only research lane. It does not replace
+`competitive-v4.0`, alter the V4.2 shadow lifecycle, or gain Telegram execution authority.
+The API endpoint `/v1/projections/current` projects the full official FPL player catalogue
+without using elite ownership, league rank, or previous-GW captaincy. The dashboard exposes
+the results through **V5 Lab**, including uncertainty ranges, expected minutes, return/haul
+probabilities, quality status, search and position filters.
+
+Run the local checks with:
+
+```powershell
+cd services/api
+python -m pytest tests -q -p no:cacheprovider
+cd ../../web-next
+npm run typecheck
+npm run build
+```
+
 After deployment, `/health` must report `competitive-v4.0`. A green service alone is insufficient: also confirm the expected GW, snapshot timestamp and `quality_status=valid`. The absence of an alert is not proof that an automated refresh succeeded.
 
 ---
