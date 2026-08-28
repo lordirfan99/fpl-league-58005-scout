@@ -3,7 +3,7 @@ name: Import V5 Blueprint
 on:
   push:
     paths:
-      - 'docs/.v5_blueprint_payload.b64.part*'
+      - 'docs/.v5fixed_payload.b64.part*'
   workflow_dispatch:
 
 permissions:
@@ -24,7 +24,7 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           import base64, gzip
-          parts = sorted(Path('docs').glob('.v5_blueprint_payload.b64.part*'))
+          parts = sorted(Path('docs').glob('.v5fixed_payload.b64.part*'))
           if len(parts) < 4:
               raise SystemExit(f'Waiting for all 4 payload parts; found {len(parts)}')
           encoded = ''.join(p.read_text(encoding='utf-8').strip() for p in parts)
@@ -37,7 +37,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/FPL_V5_Player_Intelligence_Implementation_Blueprint.md
-          git rm -f docs/.v5_blueprint_payload.b64.part*
+          git rm -f docs/.v5fixed_payload.b64.part*
+          git rm -f docs/.v5_blueprint_payload.b64.part0 || true
           git rm -f .github/workflows/import-v5-blueprint.yml
           git commit -m "docs: add V5 player intelligence implementation blueprint"
           git push
