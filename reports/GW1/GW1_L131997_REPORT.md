@@ -1,8 +1,8 @@
 # FPL League 131997 — Gameweek 1 Analysis
 
-> **Report generated:** 29 August 2026 00:36 UTC
+> **Report generated:** 29 August 2026 00:54 UTC
 > **League:** OVERALL IFE 26/27 [MUSIM KE-7] — [standings](https://fantasy.premierleague.com/leagues/131997/standings/c)
-> **Total competitors analysed:** 1887
+> **Total competitors analysed:** 1782
 
 ---
 
@@ -10,15 +10,15 @@
 
 | Metric | Value |
 |:-------|:------|
-| Average GW Points | 57.6 |
+| Average GW Points | 61.6 |
 | Highest GW Points | 110 |
-| Lowest GW Points | 0 |
-| Average Total Points | 57.6 |
-| Average Squad Cost | £99.56m |
+| Lowest GW Points | 27 |
+| Average Total Points | 61.6 |
+| Average Squad Cost | £99.65m |
 | Teams Making Transfers | 0 (0.0%) |
 | -4pt Hits Taken | 0 teams |
 | Total Transfers Made | 0 |
-| Chips Used (GW1) | {'bboost': 889, '3xc': 324} |
+| Chips Used (GW1) | {'bboost': 939, '3xc': 303} |
 
 ---
 
@@ -31,21 +31,21 @@
 | 3 | Rizqi Team | Adam Rizqi | 102 | 102 | Palmer | 0 |
 | 4 | huntrix2 | Malas Set | 100 | 100 | Palmer | 0 |
 | 5 | Russell King IV | Bobby Zamora | 100 | 100 | João Pedro | 0 |
-| 6 | Jabi FC | Wan NorZaidi Wan Muhamad | 99 | 99 | Ndiaye | 0 |
-| 7 | Fpl.Umar | Mutak Mulat | 99 | 99 | João Pedro | 0 |
-| 8 | Jeya fc28 | jeyaraman appadori | 97 | 97 | Palmer | 0 |
-| 9 | Obsidian Singularity | Faisal Fuad | 96 | 96 | João Pedro | 0 |
-| 10 | Norsi fc | qwert jr | 96 | 96 | B.Fernandes | 0 |
-| 11 | ISF Dengkil | YUSOFF HAITI | 96 | 96 | Gabriel | 0 |
-| 12 | Mamu Zikri Fc | eden zikri | 94 | 94 | Calafiori | 0 |
-| 13 | ROSSE_ATELIER | ross- adam mikael | 94 | 94 | Haaland | 0 |
+| 6 | Fpl.Umar | Mutak Mulat | 99 | 99 | João Pedro | 0 |
+| 7 | Jabi FC | Wan NorZaidi Wan Muhamad | 99 | 99 | Ndiaye | 0 |
+| 8 | KIM GREAT | Abuya Hisham | 99 | 99 | B.Fernandes | 0 |
+| 9 | CunhaBrunoCunhaBruno | Tomlin Gabriel | 98 | 98 | B.Fernandes | 0 |
+| 10 | Jeya fc28 | jeyaraman appadori | 97 | 97 | Palmer | 0 |
+| 11 | Norsi fc | qwert jr | 96 | 96 | B.Fernandes | 0 |
+| 12 | Obsidian Singularity | Faisal Fuad | 96 | 96 | João Pedro | 0 |
+| 13 | ISF Dengkil | YUSOFF HAITI | 96 | 96 | Gabriel | 0 |
 | 14 | NARUTO PANDA | Naruto Sapu | 94 | 94 | Haaland | 0 |
-| 15 | Eternal | Nana Saifolbahri | 93 | 93 | Palmer | 0 |
-| 16 | Belut Berapi | ABU 45 | 93 | 93 | João Pedro | 0 |
-| 17 | Suri FC | Suri Iskandar | 92 | 92 | B.Fernandes | 0 |
-| 18 | LCTC FC | Kamal Lahatta | 92 | 92 | João Pedro | 0 |
+| 15 | ROSSE_ATELIER | ross- adam mikael | 94 | 94 | Haaland | 0 |
+| 16 | Mamu Zikri Fc | eden zikri | 94 | 94 | Calafiori | 0 |
+| 17 | Belut Berapi | ABU 45 | 93 | 93 | João Pedro | 0 |
+| 18 | Eternal | Nana Saifolbahri | 93 | 93 | Palmer | 0 |
 | 19 | Rafs 66 | Tengku Rafs J | 92 | 92 | Saka | 0 |
-| 20 | Browny | Wan Farid | 92 | 92 | João Pedro | 0 |
+| 20 | Enggang Hitam | Samad Jo | 92 | 92 | Gakpo | 0 |
 
 ---
 
@@ -53,26 +53,26 @@
 
 | Rank | Team | Manager | GW Pts | Total | Captain | Transfers |
 |:----:|:-----|:--------|:------:|:-----:|:--------|:---------:|
-| 1 | RayyanRayqalRayshaFC | Rosli Mohamed | 0 | 0 | Haaland | 0 |
-| 2 | Taparuddin | John Labu1 | 0 | 0 | B.Fernandes | 0 |
-| 3 | Preman FPL | Haziq Amran | 0 | 0 | N/A | 0 |
-| 4 | FJUNIS | Franciss Junis | 0 | 0 | N/A | 0 |
-| 5 | Chickydis 1 | H Isyraf | 0 | 0 | B.Fernandes | 0 |
-| 6 | JJ.my | JESA JORING | 0 | 0 | N/A | 0 |
-| 7 | WiF3 | Lai Cassandra | 0 | 0 | N/A | 0 |
-| 8 | Gabriel Guard | Oh name | 0 | 0 | Haaland | 0 |
-| 9 | LIVERPOOL FC | Shamsul omar | 0 | 0 | N/A | 0 |
-| 10 | Sovereign FC | Captain's Alim | 0 | 0 | N/A | 0 |
-| 11 | MFR At-Taranjani | Chi Razac | 0 | 0 | Haaland | 0 |
-| 12 | Rezeki Aus | A Z | 0 | 0 | Haaland | 0 |
-| 13 | Org kg | Org Kampung | 0 | 0 | Havertz | 0 |
-| 14 | KALUMPANG FC | KUCA BOJENG | 0 | 0 | Haaland | 0 |
-| 15 | Kebun Cili | Untuk Game | 0 | 0 | N/A | 0 |
-| 16 | Gaurus | Kojack R | 0 | 0 | Gabriel | 0 |
-| 17 | Republic of Arsenal | YUSOFF HAITI | 0 | 0 | Mbeumo | 0 |
-| 18 | thechamp | wak leman | 0 | 0 | N/A | 0 |
-| 19 | JZFC | Jehan Zamri | 0 | 0 | N/A | 0 |
-| 20 | ✨PalataoFC✨ | Kozambo FC | 0 | 0 | N/A | 0 |
+| 1 | AAA FC | Azhar Asri | 27 | 27 | Cunha | 0 |
+| 2 | KUCHING OIL | Kch Nvx | 27 | 27 | Cunha | 0 |
+| 3 | kelab f | fadzli muhamad | 28 | 28 | Haaland | 0 |
+| 4 | KL FC | budak lama | 30 | 30 | Gyökeres | 0 |
+| 5 | AlwiAisyah FC | Farah Farhana Abd Hanif | 30 | 30 | Haaland | 0 |
+| 6 | MRXJ6 | MRI XJ6 | 31 | 31 | Haaland | 0 |
+| 7 | resQ 87 | Sejuk Hati | 31 | 31 | Haaland | 0 |
+| 8 | Paka 2 FC | Abi Amsyar 2 | 31 | 31 | Haaland | 0 |
+| 9 | Amus1 | MUSTAQIM MAHMUD | 33 | 33 | Haaland | 0 |
+| 10 | Ayaan FC | Emmelin George | 33 | 33 | B.Fernandes | 0 |
+| 11 | Aliff_Lfc 01 | Muhammad Aliff Abd Khalid | 33 | 33 | Haaland | 0 |
+| 12 | Agogo FC | MUHAMMAD ZULHELMI | 33 | 33 | Haaland | 0 |
+| 13 | Ariesciana | Aries Ciana | 33 | 33 | Rice | 0 |
+| 14 | MBAPPE | KARIM BENZEMA | 34 | 34 | Gyökeres | 0 |
+| 15 | MaNuTics | Saiful Bahari | 34 | 34 | Haaland | 0 |
+| 16 | Arisya team | MAN 2 Dua | 34 | 34 | Haaland | 0 |
+| 17 | RONALDO | Mohd Ayden | 35 | 35 | Haaland | 0 |
+| 18 | Ketimbang2026 | Silaun City | 35 | 35 | Haaland | 0 |
+| 19 | MAIL | mail bukang | 35 | 35 | Haaland | 0 |
+| 20 | Ganda FC | Abg Ayoi | 35 | 35 | Haaland | 0 |
 
 ---
 
@@ -80,28 +80,28 @@
 
 | Player | Ownership | Teams |
 |:-------|:---------:|:-----:|
-| João Pedro | 69.8% | 1318 |
-| B.Fernandes | 59.9% | 1130 |
-| Haaland | 56.1% | 1058 |
-| Calafiori | 56.0% | 1057 |
-| Mbeumo | 52.9% | 999 |
-| Tzolis | 41.2% | 778 |
-| Shaw | 38.7% | 730 |
-| Calvert-Lewin | 35.4% | 668 |
-| Szoboszlai | 35.1% | 663 |
-| Verbruggen | 33.8% | 637 |
-| Semenyo | 31.4% | 593 |
-| Kinsky | 30.4% | 574 |
-| Raya | 29.9% | 565 |
-| Gabriel | 29.9% | 564 |
-| Maguire | 25.5% | 481 |
-| Rogers | 21.7% | 410 |
-| E.Le Fée | 21.6% | 407 |
-| Lammens | 21.3% | 401 |
-| Brobbey | 21.2% | 400 |
-| Hume | 20.2% | 381 |
+| João Pedro | 76.7% | 1366 |
+| Haaland | 61.3% | 1093 |
+| Calafiori | 61.3% | 1092 |
+| B.Fernandes | 59.8% | 1066 |
+| Mbeumo | 54.5% | 972 |
+| Tzolis | 45.1% | 804 |
+| Shaw | 40.6% | 724 |
+| Szoboszlai | 39.1% | 697 |
+| Verbruggen | 37.7% | 671 |
+| Calvert-Lewin | 37.4% | 667 |
+| Kinsky | 33.7% | 601 |
+| Semenyo | 31.1% | 555 |
+| Raya | 30.2% | 538 |
+| Gabriel | 29.6% | 528 |
+| Maguire | 26.7% | 476 |
+| Rogers | 23.0% | 409 |
+| E.Le Fée | 22.7% | 405 |
+| Brobbey | 22.2% | 396 |
+| Ndiaye | 21.7% | 387 |
+| Hume | 21.2% | 378 |
 
-**Template Players (≥50%):** João Pedro, B.Fernandes, Haaland, Calafiori, Mbeumo
+**Template Players (≥50%):** João Pedro, Haaland, Calafiori, B.Fernandes, Mbeumo
 
 
 ---
@@ -110,61 +110,61 @@
 
 | Player | Captained By | % of League |
 |:-------|:-----------:|:---------:|
-| Haaland | 615 teams | 32.6% |
-| B.Fernandes | 443 teams | 23.5% |
-| João Pedro | 119 teams | 6.3% |
-| Mbeumo | 102 teams | 5.4% |
-| Gabriel | 66 teams | 3.5% |
-| Havertz | 58 teams | 3.1% |
-| Saka | 52 teams | 2.8% |
-| Tzolis | 47 teams | 2.5% |
-| Gyökeres | 41 teams | 2.2% |
-| Isak | 39 teams | 2.1% |
+| Haaland | 644 teams | 36.1% |
+| B.Fernandes | 402 teams | 22.6% |
+| João Pedro | 134 teams | 7.5% |
+| Mbeumo | 92 teams | 5.2% |
+| Gabriel | 62 teams | 3.5% |
+| Saka | 57 teams | 3.2% |
+| Havertz | 53 teams | 3.0% |
+| Tzolis | 47 teams | 2.6% |
+| Isak | 28 teams | 1.6% |
+| Calafiori | 27 teams | 1.5% |
 
 ---
 
 ## 🎲 Differentials (Owned < 10%)
 
-- **Dominguez** — 0.1% owned (2 teams)
-  - Owners: Tarakuca FC, Joe FC
-- **Pau** — 0.1% owned (2 teams)
-  - Owners: Martyoe, Brazil
-- **M.França** — 0.1% owned (2 teams)
-  - Owners: Vertex85, SelejauRASB
-- **Botman** — 0.1% owned (2 teams)
-  - Owners: Kaki Ayam FC, NasiAyam
-- **Manzambi** — 0.1% owned (2 teams)
-  - Owners: Kandasatu, MaZRa03
-- **McNeil** — 0.1% owned (2 teams)
-  - Owners: France, Kiki comel
-- **Benitez** — 0.1% owned (2 teams)
-  - Owners: France, Winter
-- **Barkley** — 0.1% owned (2 teams)
-  - Owners: France, GGMU
-- **Obi** — 0.1% owned (2 teams)
-  - Owners: CHELSHET, Marc Cucur Udang
-- **Hutchinson** — 0.1% owned (2 teams)
-  - Owners: Kalimandung United, MurahRezekiFC
-- **Kitching** — 0.1% owned (2 teams)
-  - Owners: BiJugan OBJFC, Total90 FC
-- **Torp** — 0.1% owned (2 teams)
-  - Owners: Balatak FC, Juara 2026/2027
-- **Tosin** — 0.1% owned (2 teams)
-  - Owners: Fenrirr, FC MAESTRO77
-- **Rodríguez** — 0.1% owned (2 teams)
-  - Owners: Fenrirr, Everlasting MU80
-- **Schuster** — 0.1% owned (2 teams)
-  - Owners: KABONG FC, Florian isak
-- **Kroupi.Jr** — 0.1% owned (2 teams)
-  - Owners: LABYRINTH's Team, Nagato
-- **Munoz** — 0.1% owned (2 teams)
-  - Owners: Pok We ORIGINAL, syaza_iqi fc
+- **Armstrong** — 0.1% owned (2 teams)
+  - Owners: IIIIIIIIIIIIIIIIIIII, Anta 1
+- **Angulo** — 0.1% owned (2 teams)
+  - Owners: BEZITA FPL, NeverLose FC
+- **Olusesi** — 0.1% owned (2 teams)
+  - Owners: TWO MISSION, Yogesharma Krishnan
+- **Horníček** — 0.1% owned (2 teams)
+  - Owners: Zayden's Team, Spain
+- **Núñez** — 0.1% owned (2 teams)
+  - Owners: Pipit Kelabu, haha
 - **Hato** — 0.1% owned (2 teams)
   - Owners: Madani FC, santai fc
+- **Destan** — 0.1% owned (2 teams)
+  - Owners: ArTiX FC, Fadzil's Team
+- **Johnson** — 0.1% owned (2 teams)
+  - Owners: arvin1321, NAMZ FC
+- **Kamara** — 0.1% owned (2 teams)
+  - Owners: BETTA imbellis FC, England
+- **Struijk** — 0.1% owned (2 teams)
+  - Owners: Ninja Warrior, Huwainaa's
+- **Gray** — 0.1% owned (2 teams)
+  - Owners: Aku Kato Doh, NasiKuning
+- **Kamada** — 0.1% owned (2 teams)
+  - Owners: HeadHunter89, England
+- **Tchaouna** — 0.1% owned (2 teams)
+  - Owners: SYA ZIELA TEAM, Misteri FC
+- **Torp** — 0.1% owned (2 teams)
+  - Owners: Balatak FC, Juara 2026/2027
 - **Bentancur** — 0.1% owned (2 teams)
   - Owners: Bulus, Arsenal Fc
-- **McCarthy** — 0.1% owned (2 teams)
-  - Owners: Keratong FC, BORAK FC
+- **Schlager** — 0.1% owned (2 teams)
+  - Owners: W'len 2026, Gatot
+- **Munoz** — 0.1% owned (2 teams)
+  - Owners: syaza_iqi fc, Pok We ORIGINAL
+- **Belloumi** — 0.1% owned (2 teams)
+  - Owners: NIKIYSA 2, Rinnegan
+- **Henry** — 0.1% owned (2 teams)
+  - Owners: inferno biru pekat, Fighter FC
+- **Marc Guiu** — 0.1% owned (2 teams)
+  - Owners: inferno biru pekat, Sekunteppp
 
 ---
 
@@ -182,27 +182,26 @@
 
 | Formation | Teams | % |
 |:---------:|:-----:|:-:|
-| 5-5-3 | 1855 | 98.3% |
-| 0-0-0 | 32 | 1.7% |
+| 5-5-3 | 1782 | 100.0% |
 
 ---
 
 ## 🏥 Injury Watch
 
-- **Total injured players across league:** 422
+- **Total injured players across league:** 405
 - **Average per team:** 0.2
 
 **Most Common Injuries:**
-- Palestra: 77 teams
-- Sarr: 53 teams
-- Georginio: 46 teams
-- I.Sangaré: 36 teams
-- Hinshelwood: 32 teams
-- Bruno G.: 28 teams
-- Caicedo: 24 teams
-- Osula: 21 teams
-- Matheus N.: 20 teams
-- Amad: 14 teams
+- Palestra: 76 teams
+- Sarr: 42 teams
+- Mateta: 41 teams
+- Georginio: 40 teams
+- Hinshelwood: 35 teams
+- I.Sangaré: 29 teams
+- Bruno G.: 26 teams
+- Caicedo: 25 teams
+- Matheus N.: 16 teams
+- Osula: 14 teams
 
 ---
 
@@ -210,26 +209,26 @@
 
 | Club | Players in Squads |
 |:-----|:-----------------:|
-| Arsenal | 4508 |
-| Man Utd | 4128 |
-| Man City | 2760 |
-| Chelsea | 2523 |
-| Sunderland | 1976 |
-| Liverpool | 1845 |
-| Spurs | 1777 |
-| Brighton | 1442 |
-| Everton | 1124 |
-| Leeds | 1082 |
-| Nott'm Forest | 1065 |
-| Ipswich Town | 790 |
-| Brentford | 785 |
-| Coventry City | 482 |
-| Crystal Palace | 467 |
-| Aston Villa | 365 |
-| Fulham | 219 |
-| Hull City | 186 |
-| Bournemouth | 172 |
-| Newcastle | 129 |
+| Arsenal | 4380 |
+| Man Utd | 3934 |
+| Man City | 2692 |
+| Chelsea | 2502 |
+| Sunderland | 1888 |
+| Liverpool | 1775 |
+| Spurs | 1709 |
+| Brighton | 1480 |
+| Everton | 1083 |
+| Leeds | 1056 |
+| Nott'm Forest | 917 |
+| Ipswich Town | 795 |
+| Brentford | 723 |
+| Coventry City | 464 |
+| Crystal Palace | 393 |
+| Aston Villa | 324 |
+| Fulham | 190 |
+| Hull City | 169 |
+| Bournemouth | 147 |
+| Newcastle | 109 |
 
 ---
 

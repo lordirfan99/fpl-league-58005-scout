@@ -1,193 +1,193 @@
 {
   "gw": 1,
-  "generated_at": "2026-08-29T00:36:27Z",
-  "total_competitors": 1887,
+  "generated_at": "2026-08-29T00:54:48Z",
+  "total_competitors": 1782,
   "squad_ownership": {
-    "total_teams": 1887,
-    "avg_budget": 99.56,
-    "avg_total_points": 57.6,
-    "avg_gw_points": 57.6,
+    "total_teams": 1782,
+    "avg_budget": 99.65,
+    "avg_total_points": 61.6,
+    "avg_gw_points": 61.6,
     "max_gw_points": 110,
-    "min_gw_points": 0,
+    "min_gw_points": 27,
     "template_players": [
       "Jo\u00e3o Pedro",
-      "B.Fernandes",
       "Haaland",
       "Calafiori",
+      "B.Fernandes",
       "Mbeumo"
     ],
     "top_owned": [
       {
         "name": "Jo\u00e3o Pedro",
-        "pct": 69.8
-      },
-      {
-        "name": "B.Fernandes",
-        "pct": 59.9
+        "pct": 76.7
       },
       {
         "name": "Haaland",
-        "pct": 56.1
+        "pct": 61.3
       },
       {
         "name": "Calafiori",
-        "pct": 56.0
+        "pct": 61.3
+      },
+      {
+        "name": "B.Fernandes",
+        "pct": 59.8
       },
       {
         "name": "Mbeumo",
-        "pct": 52.9
+        "pct": 54.5
       },
       {
         "name": "Tzolis",
-        "pct": 41.2
+        "pct": 45.1
       },
       {
         "name": "Shaw",
-        "pct": 38.7
-      },
-      {
-        "name": "Calvert-Lewin",
-        "pct": 35.4
+        "pct": 40.6
       },
       {
         "name": "Szoboszlai",
-        "pct": 35.1
+        "pct": 39.1
       },
       {
         "name": "Verbruggen",
-        "pct": 33.8
+        "pct": 37.7
       },
       {
-        "name": "Semenyo",
-        "pct": 31.4
+        "name": "Calvert-Lewin",
+        "pct": 37.4
       },
       {
         "name": "Kinsky",
-        "pct": 30.4
+        "pct": 33.7
+      },
+      {
+        "name": "Semenyo",
+        "pct": 31.1
       },
       {
         "name": "Raya",
-        "pct": 29.9
+        "pct": 30.2
       },
       {
         "name": "Gabriel",
-        "pct": 29.9
+        "pct": 29.6
       },
       {
         "name": "Maguire",
-        "pct": 25.5
+        "pct": 26.7
       },
       {
         "name": "Rogers",
-        "pct": 21.7
+        "pct": 23.0
       },
       {
         "name": "E.Le F\u00e9e",
-        "pct": 21.6
-      },
-      {
-        "name": "Lammens",
-        "pct": 21.3
+        "pct": 22.7
       },
       {
         "name": "Brobbey",
-        "pct": 21.2
-      },
-      {
-        "name": "Hume",
-        "pct": 20.2
+        "pct": 22.2
       },
       {
         "name": "Ndiaye",
-        "pct": 19.7
+        "pct": 21.7
       },
       {
-        "name": "Gibbs-White",
-        "pct": 18.2
+        "name": "Hume",
+        "pct": 21.2
       },
       {
-        "name": "Thiago",
-        "pct": 17.5
-      },
-      {
-        "name": "Isak",
-        "pct": 17.2
-      },
-      {
-        "name": "Roefs",
-        "pct": 16.2
+        "name": "Lammens",
+        "pct": 20.4
       },
       {
         "name": "Gro\u00df",
-        "pct": 16.1
-      },
-      {
-        "name": "Diop",
-        "pct": 15.8
-      },
-      {
-        "name": "O'Reilly",
-        "pct": 15.2
+        "pct": 17.8
       },
       {
         "name": "White",
-        "pct": 14.9
+        "pct": 16.7
       },
       {
-        "name": "N.Williams",
-        "pct": 14.3
+        "name": "Diop",
+        "pct": 16.5
+      },
+      {
+        "name": "Isak",
+        "pct": 16.4
+      },
+      {
+        "name": "Gibbs-White",
+        "pct": 15.5
+      },
+      {
+        "name": "Thiago",
+        "pct": 15.3
+      },
+      {
+        "name": "Roefs",
+        "pct": 15.2
+      },
+      {
+        "name": "O'Reilly",
+        "pct": 14.6
+      },
+      {
+        "name": "Palmer",
+        "pct": 13.9
       }
     ],
     "captain_choices": [
       {
         "name": "Haaland",
-        "count": 615,
-        "percentage": 32.6
+        "count": 644,
+        "percentage": 36.1
       },
       {
         "name": "B.Fernandes",
-        "count": 443,
-        "percentage": 23.5
+        "count": 402,
+        "percentage": 22.6
       },
       {
         "name": "Jo\u00e3o Pedro",
-        "count": 119,
-        "percentage": 6.3
+        "count": 134,
+        "percentage": 7.5
       },
       {
         "name": "Mbeumo",
-        "count": 102,
-        "percentage": 5.4
+        "count": 92,
+        "percentage": 5.2
       },
       {
         "name": "Gabriel",
-        "count": 66,
+        "count": 62,
         "percentage": 3.5
       },
       {
-        "name": "Havertz",
-        "count": 58,
-        "percentage": 3.1
+        "name": "Saka",
+        "count": 57,
+        "percentage": 3.2
       },
       {
-        "name": "Saka",
-        "count": 52,
-        "percentage": 2.8
+        "name": "Havertz",
+        "count": 53,
+        "percentage": 3.0
       },
       {
         "name": "Tzolis",
         "count": 47,
-        "percentage": 2.5
-      },
-      {
-        "name": "Gy\u00f6keres",
-        "count": 41,
-        "percentage": 2.2
+        "percentage": 2.6
       },
       {
         "name": "Isak",
-        "count": 39,
-        "percentage": 2.1
+        "count": 28,
+        "percentage": 1.6
+      },
+      {
+        "name": "Calafiori",
+        "count": 27,
+        "percentage": 1.5
       }
     ]
   },
@@ -201,61 +201,57 @@
   "formations": [
     {
       "formation": "5-5-3",
-      "count": 1855
-    },
-    {
-      "formation": "0-0-0",
-      "count": 32
+      "count": 1782
     }
   ],
   "injuries": {
-    "total_injured_instances": 422,
+    "total_injured_instances": 405,
     "avg_injured_per_team": 0.2,
     "most_common_injured": [
       [
         "Palestra",
-        77
+        76
       ],
       [
         "Sarr",
-        53
+        42
+      ],
+      [
+        "Mateta",
+        41
       ],
       [
         "Georginio",
-        46
-      ],
-      [
-        "I.Sangar\u00e9",
-        36
+        40
       ],
       [
         "Hinshelwood",
-        32
+        35
+      ],
+      [
+        "I.Sangar\u00e9",
+        29
       ],
       [
         "Bruno G.",
-        28
+        26
       ],
       [
         "Caicedo",
-        24
-      ],
-      [
-        "Osula",
-        21
+        25
       ],
       [
         "Matheus N.",
-        20
+        16
       ],
       [
-        "Amad",
+        "Osula",
         14
       ]
     ]
   },
   "chips": {
-    "bboost": 889,
-    "3xc": 324
+    "bboost": 939,
+    "3xc": 303
   }
 }
