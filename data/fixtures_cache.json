@@ -1,5 +1,5 @@
 {
-  "fetched_at": "2026-08-28T15:22:09.265234+00:00",
+  "fetched_at": "2026-08-29T10:03:09.602645+00:00",
   "source": "official-fpl-api",
   "gameweeks": {
     "1": [
@@ -373,14 +373,6 @@
       },
       {
         "event": 5,
-        "team_h": "Man City",
-        "team_a": "Sunderland",
-        "team_h_difficulty": 2,
-        "team_a_difficulty": 5,
-        "kickoff_time": "2026-09-19T14:00:00Z"
-      },
-      {
-        "event": 5,
         "team_h": "Newcastle",
         "team_a": "Hull City",
         "team_h_difficulty": 2,
@@ -401,6 +393,14 @@
         "team_a": "Liverpool",
         "team_h_difficulty": 4,
         "team_a_difficulty": 3,
+        "kickoff_time": "2026-09-20T13:00:00Z"
+      },
+      {
+        "event": 5,
+        "team_h": "Man City",
+        "team_a": "Sunderland",
+        "team_h_difficulty": 2,
+        "team_a_difficulty": 5,
         "kickoff_time": "2026-09-20T13:00:00Z"
       },
       {
