@@ -1,5 +1,8 @@
 # Production deployment and automation
 
+For the current verified state (including live GW2 data, snapshot availability and
+deployment evidence), see [`docs/CURRENT_STATUS.md`](docs/CURRENT_STATUS.md).
+
 ## Live services
 
 | Component | Production target |
@@ -103,6 +106,7 @@ operation requires no intervention.
 
 ```powershell
 Invoke-RestMethod https://fpl-scout-api-bztsnhv3ea-uc.a.run.app/health
+Invoke-RestMethod https://fpl-scout-api-bztsnhv3ea-uc.a.run.app/v1/live/team
 Invoke-RestMethod https://sportmania.duckdns.org/fpl-autopilot/health
 ```
 
