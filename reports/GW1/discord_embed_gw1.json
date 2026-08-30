@@ -1,0 +1,40 @@
+{
+  "embeds": [
+    {
+      "title": "⚽ FPL Scout Report — Gameweek 1",
+      "description": "**LIGA FPL KK OLD BOYS S5 (58005)** vs **OVERALL IFE 26/27 — MUSIM KE-7 (131997)**\nRecovery run after the FPL API 503 outage. API confirmed healthy, full pipeline completed & pushed.",
+      "color": 3447003,
+      "fields": [
+        {
+          "name": "🏆 League 58005 — LIGA FPL KK OLD BOYS S5",
+          "value": "```\nTotal entries : 1,176\nAvg GW points : 59.3\nTop GW scorer : Ganu FC — 114 ⭐\n              (Amar 77 · capt. João Pedro)\nMost popular C: Haaland 36.5% (429)\n               B.Fernandes 34.0% (400)\nTemplate (≥50%):\n  João Pedro 73.0% | B.Fernandes 69.6%\n  Calafiori 65.1% | Haaland 64.5%\n  Mbeumo 57.6%\nFormation    : 100% 5-5-3 (uniform) ⚠️\nTransfers    : 0 (0 teams — GW1)\nChips used   : BB 552 | 3xC 105\n```",
+          "inline": false
+        },
+        {
+          "name": "🏆 League 131997 — OVERALL IFE 26/27 (MUSIM KE-7)",
+          "value": "```\nTotal entries : 1,786\nAvg GW points : 58.8\nTop GW scorer : Mizan 007 — 110 ⭐\n              (E Na · capt. Havertz)\nMost popular C: Haaland 33.3% (595)\n               B.Fernandes 24.0% (428)\nTemplate (≥50%):\n  João Pedro 70.9% | B.Fernandes 61.0%\n  Calafiori 56.8% | Haaland 56.1%\n  Mbeumo 53.8%\nFormation    : 100% 5-5-3 (uniform) ⚠️\nTransfers    : 0 (0 teams — GW1)\nChips used   : BB 871 | 3xC 333\n```",
+          "inline": false
+        },
+        {
+          "name": "🎯 ELITE WATCH — Top 5 Pre-Season Threats (League 58005)",
+          "value": "```\nDiesel FC       (Sashe S)    84 pts | R9  | C: B.Fernandes | 0 tr\nGo Kapit        (A.Jonathan) 78 pts | R66 | C: Haaland     | 0 tr\nKiukiu Fc       (A.Mustapa)  76 pts | R260| C: Haaland     | 0 tr\nMARZUKI MADI FC (Marzuki)    52 pts | R807| C: Haaland     | 0 tr\nChupkeChupke    (Zaid Azman) 46 pts | R361| C: Haaland     | 0 tr\n\n🔥 Diesel FC leads the pack — 84 pts, inside the league's top 10.\n⚠️ ChupkeChupke carrying 1 injury into GW2.\n```",
+          "inline": false
+        },
+        {
+          "name": "🎲 Differentials & Transfer Activity",
+          "value": "```\nGW1 = season opener: 0 transfers league-wide in BOTH leagues.\n\n58005: differentials are <10% owned punts (mostly 0.1% single-owner).\n131997: same — deepest punts at 0.1% (2 owners each).\n\nInjury radar (58005): Rodon (115), Palestra (49), Sarr (39).\nInjury radar (131997): Rodon (85), Palestra (72), Sarr (51).\n```",
+          "inline": false
+        },
+        {
+          "name": "⚠️ Data Notes (honest)",
+          "value": "`Formation` normalized to a single `5-5-3` for 100% of teams in BOTH leagues — flagged in the report as a parser artifact, not a real tactical spread. Transfers are 0 everywhere as expected for GW1 (no moves before the opening deadline).",
+          "inline": false
+        }
+      ],
+      "footer": {
+        "text": "Sportmania · FPL Scout · GitHub: lordirfan99/fpl-league-58005-scout · push 303ee26 ✅"
+      },
+      "timestamp": "2026-08-31T07:00:00.000Z"
+    }
+  ]
+}
