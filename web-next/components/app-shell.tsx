@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { ArrowLeftRight, BarChart3, Beaker, BookOpenText, Bot, Cpu, Layers3, LayoutDashboard, ListChecks, Menu, RefreshCcw, Shield, Trophy, Users, X } from "lucide-react";
+import { ArrowLeftRight, BarChart3, Beaker, BookOpenText, Bot, Cpu, Layers3, LayoutDashboard, ListChecks, Menu, RefreshCcw, Settings, Shield, Trophy, Users, X } from "lucide-react";
 
 const navigation = [
   { href: "/my-team", label: "My Team", icon: LayoutDashboard },
@@ -19,6 +19,7 @@ const navigation = [
   { href: "/transfers", label: "Transfers & Chips", icon: RefreshCcw },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/players", label: "Players", icon: BarChart3 },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 type PlanningContext = { latestSnapshotGw?: number; planningGw?: number; deadline?: string; status?: string };
@@ -47,7 +48,7 @@ export function AppShell({ children, context }: { children: React.ReactNode; con
       </aside>
       <div className="app-content">
         <header className="mobile-header"><Link href="/my-team" className="brand"><span className="brand-mark"><Shield size={18} /></span><strong>Fantasy Scout</strong></Link><span className="live-chip"><span className={context?.status === "rejected" ? "status-dot warning" : "status-dot"} />GW{context?.planningGw ?? "—"}</span></header>
-        <div className="planning-context" role="status"><span>Decision target</span><strong>{planningLabel}</strong>{context?.latestSnapshotGw && context.latestSnapshotGw !== context.planningGw ? <small>Team and league review data currently ends at GW{context.latestSnapshotGw}.</small> : <small>Team, research and decision data are aligned.</small>}</div>
+        <div className="planning-context" role="status"><span>Decision target</span><strong>{planningLabel}</strong>{context?.latestSnapshotGw && context.latestSnapshotGw !== context.planningGw ? <small>Team and league review data currently ends at GW{context.latestSnapshotGw}.</small> : <small>Team, research and decision data are aligned.</small>}<details className="week-rail"><summary>Season weeks</summary><div>{Array.from({ length: 38 }, (_, index) => index + 1).map((gw) => <Link key={gw} href={`/journal?gw=${gw}`} className={gw === context?.latestSnapshotGw ? "archived" : gw === context?.planningGw ? "planning" : ""}>{gw === context?.latestSnapshotGw ? "✓ " : ""}GW{gw}</Link>)}</div></details></div>
         <main>{children}</main>
         <nav className="mobile-nav" aria-label="Mobile navigation">
           {navigation.filter((item) => mobilePrimary.includes(item.href)).map(({ href, label, icon: Icon }) => <Link key={href} href={href} className={pathname === href ? "active" : ""}><Icon size={19} /><span>{label}</span></Link>)}
