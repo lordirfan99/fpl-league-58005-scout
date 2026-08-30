@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeftRight, BarChart3, Beaker, BookOpenText, Bot, Cpu, Layers3, LayoutDashboard, ListChecks, RefreshCcw, Shield, Trophy, Users } from "lucide-react";
+import { useState } from "react";
+import { ArrowLeftRight, BarChart3, Beaker, BookOpenText, Bot, Cpu, Layers3, LayoutDashboard, ListChecks, Menu, RefreshCcw, Shield, Trophy, Users, X } from "lucide-react";
 
 const navigation = [
   { href: "/my-team", label: "My Team", icon: LayoutDashboard },
@@ -20,8 +21,14 @@ const navigation = [
   { href: "/players", label: "Players", icon: BarChart3 },
 ];
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+type PlanningContext = { latestSnapshotGw?: number; planningGw?: number; deadline?: string; status?: string };
+
+const mobilePrimary = ["/my-team", "/assistant", "/planner", "/journal"];
+
+export function AppShell({ children, context }: { children: React.ReactNode; context?: PlanningContext }) {
   const pathname = usePathname();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const planningLabel = context?.planningGw ? `Planning GW${context.planningGw}` : "Planning context loading";
   return (
     <div className="app-frame">
       <aside className="sidebar">
@@ -36,14 +43,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           ))}
         </nav>
-        <div className="sidebar-status"><span className="status-dot" /><div><strong>2026/27 live</strong><small>GW snapshots connected</small></div></div>
+        <div className="sidebar-status"><span className={context?.status === "rejected" ? "status-dot warning" : "status-dot"} /><div><strong>{planningLabel}</strong><small>{context?.latestSnapshotGw ? `Latest team snapshot: GW${context.latestSnapshotGw}` : "Snapshots connected"}</small></div></div>
       </aside>
       <div className="app-content">
-        <header className="mobile-header"><Link href="/my-team" className="brand"><span className="brand-mark"><Shield size={18} /></span><strong>Fantasy Scout</strong></Link><span className="live-chip"><span className="status-dot" />Live</span></header>
+        <header className="mobile-header"><Link href="/my-team" className="brand"><span className="brand-mark"><Shield size={18} /></span><strong>Fantasy Scout</strong></Link><span className="live-chip"><span className={context?.status === "rejected" ? "status-dot warning" : "status-dot"} />GW{context?.planningGw ?? "—"}</span></header>
+        <div className="planning-context" role="status"><span>Decision target</span><strong>{planningLabel}</strong>{context?.latestSnapshotGw && context.latestSnapshotGw !== context.planningGw ? <small>Team and league review data currently ends at GW{context.latestSnapshotGw}.</small> : <small>Team, research and decision data are aligned.</small>}</div>
         <main>{children}</main>
         <nav className="mobile-nav" aria-label="Mobile navigation">
-          {navigation.map(({ href, label, icon: Icon }) => <Link key={href} href={href} className={pathname === href ? "active" : ""}><Icon size={19} /><span>{label}</span></Link>)}
+          {navigation.filter((item) => mobilePrimary.includes(item.href)).map(({ href, label, icon: Icon }) => <Link key={href} href={href} className={pathname === href ? "active" : ""}><Icon size={19} /><span>{label}</span></Link>)}
+          <button type="button" className={moreOpen ? "active" : ""} onClick={() => setMoreOpen((open) => !open)} aria-expanded={moreOpen} aria-controls="mobile-more-menu">{moreOpen ? <X size={19} /> : <Menu size={19} />}<span>More</span></button>
         </nav>
+        {moreOpen ? <div className="mobile-more-menu" id="mobile-more-menu"><div><strong>Research & tools</strong><button type="button" aria-label="Close more navigation" onClick={() => setMoreOpen(false)}><X size={16} /></button></div>{navigation.filter((item) => !mobilePrimary.includes(item.href)).map(({ href, label, icon: Icon }) => <Link key={href} href={href} onClick={() => setMoreOpen(false)} className={pathname === href ? "active" : ""}><Icon size={17} /><span>{label}</span></Link>)}</div> : null}
       </div>
     </div>
   );

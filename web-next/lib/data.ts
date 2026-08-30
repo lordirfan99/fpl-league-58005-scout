@@ -25,9 +25,11 @@ export async function getDashboardData(leagueId = DEFAULT_LEAGUE_ID, gameweek?: 
   return { ...data, manager: data.manager };
 }
 
-export async function getPlannerData() {
+export async function getPlannerData(targetGameweek?: number) {
   const dashboard = await getDashboardData();
-  const fromGameweek = Math.min(dashboard.gameweek + 1, 38);
+  // Planning always begins at the explicitly supplied upcoming deadline.
+  // Without it, fall back to the next GW after the latest captured review.
+  const fromGameweek = Math.min(Math.max(targetGameweek ?? dashboard.gameweek + 1, dashboard.gameweek + 1), 38);
   const toGameweek = Math.min(fromGameweek + 4, 38);
   let fixtureHorizon: FixtureHorizon;
   if (API_BASE) {

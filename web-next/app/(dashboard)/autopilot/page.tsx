@@ -18,12 +18,16 @@ export default async function AutopilotPage() {
   const candidate = plan?.model_candidate;
   const candidateGws = candidate?.evaluated_gws?.length ?? 0;
   const candidateRows = candidate?.rows ?? 0;
+  const deadline = plan?.deadline ? new Date(plan.deadline) : null;
+  const hoursToDeadline = deadline ? (deadline.getTime() - Date.now()) / 3_600_000 : null;
+  const deadlineLabel = !deadline ? "Deadline TBC" : hoursToDeadline != null && hoursToDeadline <= 0 ? "Deadline passed" : `${Math.floor((hoursToDeadline ?? 0) / 24)}d ${Math.ceil((hoursToDeadline ?? 0) % 24)}h remaining`;
+  const executionLocked = plan?.status === "rejected";
 
   return <div className="page-stack">
     <PageHeader eyebrow="GCP AUTOPILOT" title="V4 decision control room" description="The same canonical plan used by Telegram. V4.2 remains shadow-only until every promotion gate passes." updated={plan?.generated_at ? new Date(plan.generated_at).toLocaleString("en-MY", { dateStyle: "medium", timeStyle: "short" }) : undefined} />
-    <section className="decision-hero"><div><span className="hero-kicker">LIVE PLAN · GW{plan?.gw ?? dashboard.gw} · {decision?.team_diff?.approval_action ?? "REVIEW"}</span><h2>{move ? <>{move.out_name} <ArrowRight size={22} /> {move.in_name}</> : action}</h2><p>{decision?.reason ?? "No canonical decision is available."}</p></div><div className="hero-score"><span>XI + captain</span><strong>{number(decision?.uncertainty?.mean_with_captain ?? plan?.target_net_scoring_xpts ?? dashboard.projected_xpts)}</strong></div></section>
+    <section className="decision-hero"><div><span className="hero-kicker">PLANNING TARGET · GW{plan?.gw ?? dashboard.gw} · {executionLocked ? "EXECUTION LOCKED" : "READY FOR REVIEW"}</span><h2>{move ? <>{move.out_name} <ArrowRight size={22} /> {move.in_name}</> : action}</h2><p>{decision?.reason ?? "No canonical decision is available."} {executionLocked ? " This is a read-only plan until the required data refresh completes." : " Telegram remains the approval and execution channel."}</p></div><div className="hero-score"><span>XI + captain</span><strong>{number(decision?.uncertainty?.mean_with_captain ?? plan?.target_net_scoring_xpts ?? dashboard.projected_xpts)}</strong></div></section>
     <section className="metric-grid">
-      <MetricCard label="Gameweek" value={`GW${plan?.gw ?? dashboard.gw ?? "—"}`} detail={dashboard.deadline?.hours != null ? `${dashboard.deadline.hours}h to deadline` : "Deadline TBC"} />
+      <MetricCard label="Gameweek" value={`GW${plan?.gw ?? dashboard.gw ?? "—"}`} detail={deadline ? `${deadlineLabel} · ${deadline.toLocaleString("en-MY", { dateStyle: "medium", timeStyle: "short" })}` : "Deadline TBC"} tone={hoursToDeadline != null && hoursToDeadline <= 0 ? "warning" : undefined} />
       <MetricCard label="Three-GW utility" value={number(plan?.horizon_gain)} detail="Risk-adjusted gain" tone="positive" />
       <MetricCard label="Projection" value={plan?.projection_version ?? plan?.model_version ?? "—"} detail={`${decision?.optimizer?.name ?? "horizon MILP"} ${decision?.optimizer?.version ?? plan?.optimizer_version ?? ""} · ${decision?.optimizer?.status ?? "unknown"}`} />
       <MetricCard label="Source contract" value={sourceReady ? "READY" : "SAFE MODE"} detail={`Run ${plan?.run_id?.slice(0, 12) ?? "unknown"}`} tone={sourceReady ? "positive" : "warning"} />

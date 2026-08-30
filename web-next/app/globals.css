@@ -50,7 +50,7 @@ html,body{max-width:100%;overflow-x:hidden}
 
 .journal-week-stats .negative-text{color:#ad2745!important}
 .elite-manager-card{content-visibility:auto;contain-intrinsic-size:70px}
-.add-league{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}.add-league input{min-width:0;width:130px;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);font-size:10px;color:var(--ink)}.add-league button{padding:9px 12px;border:0;border-radius:9px;background:var(--purple);color:#fff;font-size:9px;font-weight:800;cursor:pointer}.add-league button:disabled{opacity:.45;cursor:default}@media(max-width:520px){.add-league input{flex:1;width:100%}.add-league button{width:100%}}
+.add-league{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}.add-league input{min-width:0;width:130px;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);font-size:10px;color:var(--ink)}.add-league button{padding:9px 12px;border:0;border-radius:9px;background:var(--purple);color:#fff;font-size:9px;font-weight:800;cursor:pointer}.add-league button:disabled{opacity:.45;cursor:default}.add-league small{width:100%;color:var(--muted);font-size:8px;line-height:1.4}@media(max-width:520px){.add-league input{flex:1;width:100%}.add-league button{width:100%}}
 
 /* Long model identifiers must shrink inside the two-column phone grid. */
 @media(max-width:720px){
@@ -83,4 +83,19 @@ html,body{max-width:100%;overflow-x:hidden}
   .model-xi{padding:12px 8px}
   .model-xi-stats,.model-xi-evidence{grid-template-columns:repeat(2,minmax(0,1fr))}
   .model-xi .pitch{min-height:540px;padding-left:5px;padding-right:5px}
+}
+
+/* Persistent decision context keeps historical reviews separate from the next action. */
+.planning-context{display:flex;align-items:center;gap:8px;min-height:34px;padding:8px 36px;border-bottom:1px solid #ded6e1;background:#fbf7fc;color:var(--muted);font-size:9px}.planning-context span{color:var(--mint-dark);font-size:8px;font-weight:900;letter-spacing:.09em;text-transform:uppercase}.planning-context strong{color:var(--purple);font-size:10px}.planning-context small{font-size:8px}.mobile-more-menu{display:none}
+.player-toolbar{display:flex;align-items:center;gap:9px;padding:13px 18px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:#fafbfb}.player-toolbar label{display:flex;align-items:center;gap:8px;min-width:240px;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--muted)}.player-toolbar input{width:100%;border:0;outline:0;background:transparent;font-size:10px}.filter-tabs{display:flex;gap:3px}.filter-tabs button{padding:7px 8px;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--muted);font-size:8px;font-weight:850;cursor:pointer}.filter-tabs button.active{border-color:rgba(0,190,130,.3);background:#e8faf2;color:var(--mint-dark)}.player-toolbar select{margin-left:auto;padding:8px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);font-size:9px}
+@media(max-width:720px){
+  .planning-context{gap:5px;flex-wrap:wrap;padding:7px 12px;font-size:8px}.planning-context small{width:100%;font-size:7px}
+  .mobile-nav{grid-template-columns:repeat(5,minmax(0,1fr));overflow:visible;scroll-snap-type:none}
+  .mobile-nav a{min-width:0;flex:1 1 0}
+  .mobile-nav button{display:grid;place-items:center;gap:2px;padding:6px 2px;border:0;border-radius:8px;background:transparent;color:#cdb8d3;font-size:7px;cursor:pointer}
+  .mobile-nav button.active{background:var(--mint);color:var(--purple)}
+  .mobile-more-menu{position:fixed;right:8px;bottom:70px;z-index:45;display:grid;width:min(280px,calc(100vw - 16px));padding:8px;border:1px solid rgba(255,255,255,.12);border-radius:14px;background:rgba(59,0,80,.98);box-shadow:0 14px 35px rgba(0,0,0,.3)}
+  .mobile-more-menu>div{display:flex;align-items:center;justify-content:space-between;padding:7px 8px 9px;color:#d9c9de;font-size:9px}.mobile-more-menu button{display:grid;place-items:center;border:0;background:transparent;color:#fff;cursor:pointer}
+  .mobile-more-menu a{display:flex;align-items:center;gap:9px;padding:10px 9px;border-radius:8px;color:#d7c8dc;font-size:10px}.mobile-more-menu a.active{background:var(--mint);color:var(--purple)}
+  .player-toolbar{align-items:stretch;flex-direction:column;padding:11px}.player-toolbar label{min-width:0}.filter-tabs{overflow-x:auto}.player-toolbar select{margin-left:0}
 }
