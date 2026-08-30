@@ -164,6 +164,19 @@ def test_catalog_exposes_official_fpl_entities() -> None:
     assert response.json()["teams"]
 
 
+def test_live_team_endpoint_is_separate_from_snapshots(monkeypatch) -> None:
+    monkeypatch.setattr(main.live_fpl, "current_gameweek", lambda: 2)
+    monkeypatch.setattr(main.live_fpl, "team", lambda entry_id, gameweek: {
+        "source": "official-fpl-live", "status": "live", "gameweek": gameweek,
+        "entry": {"id": entry_id}, "picks": [], "provisional": True,
+    })
+    response = client.get("/v1/live/team")
+    assert response.status_code == 200
+    assert response.json()["source"] == "official-fpl-live"
+    assert response.json()["status"] == "live"
+    assert response.json()["gameweek"] == 2
+
+
 def test_fixture_horizon_is_populated() -> None:
     response = client.get("/v1/fixtures?from_gw=2&to_gw=6")
     assert response.status_code == 200

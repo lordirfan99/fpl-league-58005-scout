@@ -3,17 +3,19 @@ import { PageHeader } from "@/components/page-header";
 import { Pitch } from "@/components/pitch";
 import { getAutopilotData } from "@/lib/autopilot";
 import { getDashboardData } from "@/lib/data";
+import { getLiveTeam } from "@/lib/live";
 import type { Pick } from "@/lib/types";
 
 export default async function MyTeamPage() {
-  const [data, autopilot] = await Promise.all([getDashboardData(), getAutopilotData()]);
+  const [data, autopilot, live] = await Promise.all([getDashboardData(), getAutopilotData(), getLiveTeam()]);
   const { manager } = data;
   const plan = autopilot?.plan;
   const decision = plan?.decision_summary;
-  const liveGameweek = autopilot?.dashboard.gw;
-  const liveTeam = liveGameweek != null && liveGameweek > data.gameweek && autopilot?.dashboard.players?.length === 15;
+  const liveGameweek = autopilot?.dashboard.gw ?? live?.gameweek;
+  const liveTeam = liveGameweek != null && liveGameweek >= data.gameweek && ((autopilot?.dashboard.players?.length === 15) || live?.picks?.length === 15);
   const displayGameweek = liveTeam ? liveGameweek : data.gameweek;
-  const squad: Pick[] = liveTeam ? autopilot!.dashboard.players!.map((player) => ({ element: player.id ?? 0, name: player.name ?? "Unknown", position: ((player.position ?? player.pos ?? "MID") as Pick["position"]), team: String(player.club ?? "—"), cost: Number(player.cost ?? 0) / 10, multiplier: player.role === "C" ? 2 : 1, is_captain: player.role === "C", is_vice_captain: player.role === "VC" })) : manager.squad;
+  const livePlayers = autopilot?.dashboard.players?.length === 15 ? autopilot.dashboard.players.map((player) => ({ element: player.id ?? 0, name: player.name ?? "Unknown", position: ((player.position ?? player.pos ?? "MID") as Pick["position"]), team: String(player.club ?? "—"), cost: Number(player.cost ?? 0) / 10, multiplier: player.role === "C" ? 2 : 1, is_captain: player.role === "C", is_vice_captain: player.role === "VC" })) : live?.picks.map((pick) => ({ element: pick.element, name: pick.web_name, position: (pick.position === 1 ? "GKP" : pick.position <= 5 ? "DEF" : pick.position <= 8 ? "MID" : "FWD") as Pick["position"], team: data.bootstrap.teams.find((team) => team.id === pick.team)?.name ?? "—", cost: pick.now_cost / 10, multiplier: pick.multiplier, is_captain: pick.is_captain, is_vice_captain: pick.is_vice_captain })) ?? [];
+  const squad: Pick[] = liveTeam ? livePlayers : manager.squad;
   const historical = !liveTeam && plan?.gw != null && plan.gw !== data.gameweek;
   const deadline = plan?.deadline ? new Date(plan.deadline) : null;
   return <div className="page-stack">

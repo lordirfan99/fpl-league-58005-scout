@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse
 
 from .autopilot import AutopilotClient, AutopilotUnavailableError
 from .league_registry import LeagueRegistry
+from . import live_fpl
 from .recommendations import MODEL_VERSION, build_recommendations, cohort_summary, elite_managers
 from .projection_types import PROJECTION_VERSION
 from .projections import build_projections
@@ -103,6 +104,21 @@ def me() -> dict[str, int]:
         "default_league_id": settings.default_league_id,
         "current_gameweek": _current_gameweek(),
     }
+
+
+@app.get("/v1/live/team")
+def live_team(gw: int | None = Query(default=None, ge=1, le=38)) -> dict:
+    """Return the current public FPL team state with a short server cache.
+
+    Live data is deliberately separate from snapshot-backed endpoints. It is
+    suitable for the dashboard's current-week display, but never for journal
+    records or completed-gameweek analysis.
+    """
+    target = gw or live_fpl.current_gameweek()
+    try:
+        return live_fpl.team(settings.my_team_id, target)
+    except Exception as error:
+        raise HTTPException(status_code=503, detail=f"Official FPL live data unavailable: {error}") from error
 
 
 @app.get("/v1/me/team", response_model=TeamResponse)
