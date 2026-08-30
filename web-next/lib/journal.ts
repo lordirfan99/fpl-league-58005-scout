@@ -1,4 +1,5 @@
 import "server-only";
+import type { BootstrapEvent } from "./types";
 
 const API_BASE = (process.env.FPL_API_BASE_URL ?? "https://fpl-scout-api-bztsnhv3ea-uc.a.run.app").replace(/\/$/, "");
 export const JOURNAL_EXPORT_URL = `${API_BASE}/v1/journal/2026-27/export?filename=gameweeks.csv`;
@@ -28,3 +29,20 @@ async function request<T>(path: string): Promise<T> {
 }
 export const getJournalIndex = (season = "2026-27") => request<JournalIndex>(`/v1/journal?season=${encodeURIComponent(season)}`);
 export const getJournalEntry = (season: string, gameweek: number) => request<JournalEntry>(`/v1/journal/${encodeURIComponent(season)}/gw/${gameweek}`);
+
+/** Fill the season calendar without fabricating outcomes for weeks not archived yet. */
+export function buildSeasonTimeline(index: JournalIndex, events: BootstrapEvent[]): JournalIndexRow[] {
+  const recorded = new Map(index.gameweeks.map((row) => [row.gameweek, row]));
+  const eventById = new Map(events.map((event) => [event.id, event]));
+  return Array.from({ length: 38 }, (_, offset) => {
+    const gameweek = offset + 1;
+    const existing = recorded.get(gameweek);
+    if (existing) return existing;
+    const event = eventById.get(gameweek);
+    const status = event?.is_current ? "live" : event?.finished ? "awaiting archive" : "upcoming";
+    return {
+      gameweek, status, summary: { gw_points: 0, total_points: 0, overall_rank: 0, league_rank: 0, elite_average: 0, points_vs_reference: 0, transfers: 0, hit_cost: 0 },
+      quality: { status: "pending", issues: [status === "upcoming" ? "gameweek_not_started" : "journal_record_pending"] }, record_hash: "",
+    };
+  });
+}
