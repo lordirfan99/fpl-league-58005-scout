@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 
 class ApiMeta(BaseModel):
@@ -40,11 +40,11 @@ class Manager(BaseModel):
     player_name: str
     gw_points: int
     total_points: int
-    overall_rank: int
+    overall_rank: int = Field(validation_alias=AliasChoices("overall_rank", "rank"))
     league_rank: int
     squad_cost: float
     captain: str
-    transfers_made: int
+    transfers_made: int = Field(validation_alias=AliasChoices("transfers_made", "gw_transfers"))
     squad: list[Pick]
 
 

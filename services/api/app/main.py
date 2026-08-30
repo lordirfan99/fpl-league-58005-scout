@@ -457,7 +457,12 @@ def _current_gameweek() -> int:
     events = repository.bootstrap().get("events", [])
     current = next((event for event in events if event.get("is_current")), None)
     if current:
-        return int(current["id"])
+        candidate = int(current["id"])
+        try:
+            repository.league(settings.default_league_id, candidate)
+            return candidate
+        except SnapshotNotFoundError:
+            return max(1, candidate - 1)
     next_event = next((event for event in events if event.get("is_next")), None)
     if next_event:
         return max(1, int(next_event["id"]) - 1)

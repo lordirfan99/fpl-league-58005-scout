@@ -20,7 +20,9 @@ def validate_manager_squad(manager: dict[str, Any]) -> list[str]:
     if dict(shape) != SQUAD_SHAPE:
         issues.append(f"squad_shape:{dict(shape)}")
 
-    active_chip = str(manager.get("active_chip") or "").strip().lower()
+    active_chip = str(
+        manager.get("active_chip") or (manager.get("picks") or {}).get("active_chip") or ""
+    ).strip().lower()
     bench_boost = active_chip in BENCH_BOOST_NAMES
     scoring_count = sum(1 for pick in squad if int(pick.get("multiplier") or 0) > 0)
     expected_scoring = 15 if bench_boost else 11
