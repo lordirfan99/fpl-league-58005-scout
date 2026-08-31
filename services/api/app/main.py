@@ -9,6 +9,7 @@ import re
 from fastapi import FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from pydantic import ValidationError
 
 from .autopilot import AutopilotClient, AutopilotUnavailableError
 from .league_registry import LeagueRegistry
@@ -23,6 +24,7 @@ from .schemas import (
     EliteResponse,
     IntegrationStatus,
     LeagueResponse,
+    Manager,
     ProjectionResponse,
     RecommendationResponse,
     TeamResponse,
@@ -170,7 +172,23 @@ def league(league_id: int, gw: int | None = Query(default=None, ge=1, le=38)) ->
                 "quality_issues": quality_issues[:10],
             },
         )
-    managers = sorted(snapshot.get("competitors", []), key=lambda item: item.get("league_rank") or 10**12)
+    raw_managers = sorted(snapshot.get("competitors", []), key=lambda item: item.get("league_rank") or 10**12)
+    try:
+        managers = [Manager.model_validate(item) for item in raw_managers]
+    except ValidationError as error:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "snapshot_not_finalized",
+                "league_id": league_id,
+                "gameweek": gw,
+                "quality_status": "invalid",
+                "quality_issues": [
+                    f"schema:{'.'.join(str(part) for part in issue['loc'])}:{issue['type']}"
+                    for issue in error.errors(include_input=False)[:10]
+                ],
+            },
+        ) from error
     declared_count = int(snapshot.get("total_entries") or len(managers))
     return LeagueResponse(
         meta=_meta(snapshot), league_id=league_id, gameweek=gw, count=len(managers),
