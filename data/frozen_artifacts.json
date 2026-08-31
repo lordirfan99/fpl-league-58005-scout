@@ -2,11 +2,11 @@
   "schema_version": 1,
   "algorithm": "sha256",
   "artifacts": {
-    "data/gw1_league58005_data.json": "eb43a9d5cd429af2abd6ee9dec2bfca1242f1578e9f3da18ed4557a12f801021",
-    "data/gw1_league58005_compact.json": "ec542273159b1fc5db8cde282de9c4b0bd7ea5aa91c099e6f1ddf1f3e50aadb1",
-    "data/gw1_league131997_data.json": "40ce6d94f954ceb732d223ad182ee0342237bb31268d55b7dd3a6ccdb32eac27",
-    "data/gw1_league131997_compact.json": "eab50a08474023b65040c62956b68e11aed94b7b15e511223b6d11df012cc3b1",
-    "data/journal/2026-27/gw01.json": "9d0f40766db89e94c2bd577111fb6005958f54acbf432005ee11ee339b9d39a0"
+    "data/gw1_league58005_data.json": "24d085e12fecc42cd33eefdbdf222598d3c65bd0a02159f500c8a8dd44373aff",
+    "data/gw1_league58005_compact.json": "256748fe694942a2cde3518f8eb64e869e41ef3dc197a2f4dc7ee59157b43c1b",
+    "data/gw1_league131997_data.json": "46d32d6948acff0830d9704f47048395e5f6536f21cea78c639277835229044f",
+    "data/gw1_league131997_compact.json": "9f2e24b0dfb59ccdbc4585cf646752e075dbd7d601f101d329b4799f29cec0c4",
+    "data/journal/2026-27/gw01.json": "2a6ccdf97279b74c8b7cf76f388b07982dd2ab10c7e92531005a550a9b028746"
   },
   "corrections": []
 }

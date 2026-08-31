@@ -13,11 +13,11 @@ MANIFEST = ROOT / "data" / "frozen_artifacts.json"
 
 
 def digest(path: Path) -> str:
-    value = hashlib.sha256()
-    with path.open("rb") as source:
-        for chunk in iter(lambda: source.read(1024 * 1024), b""):
-            value.update(chunk)
-    return value.hexdigest()
+    # Git may check text files out with CRLF on Windows and LF in CI. Hash the
+    # canonical repository representation so an unchanged JSON artifact has
+    # one identity on every runner while content changes remain detectable.
+    canonical = path.read_bytes().replace(b"\r\n", b"\n")
+    return hashlib.sha256(canonical).hexdigest()
 
 
 def load() -> dict:
