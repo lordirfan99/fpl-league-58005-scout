@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -44,34 +45,76 @@ class SnapshotRepository:
         with self._path(filename).open(encoding="utf-8") as source:
             return json.load(source)
 
-    def read(self, filename: str) -> dict[str, Any]:
-        if self._bucket is not None:
-            blob = self._bucket.blob(f"snapshots/{filename}")
-            try:
-                blob.reload()
-                generation = int(blob.generation) if blob.generation else None
-                cached = self._remote_cache.get(filename)
-                if cached and cached[0] == generation:
-                    return cached[1]
-                payload = json.loads(blob.download_as_text(encoding="utf-8"))
-                self._remote_cache[filename] = (generation, payload)
-                return payload
-            except Exception:
-                # Packaged data remains a fail-soft recovery source if GCS is
-                # temporarily unavailable or the requested GW is not published.
-                pass
+    def _read_local(self, filename: str) -> dict[str, Any]:
         path = self._path(filename)
         return self._read_cached(filename, path.stat().st_mtime_ns)
+
+    def _read_remote(self, filename: str) -> dict[str, Any] | None:
+        if self._bucket is None:
+            return None
+        blob = self._bucket.blob(f"snapshots/{filename}")
+        try:
+            blob.reload()
+            generation = int(blob.generation) if blob.generation else None
+            cached = self._remote_cache.get(filename)
+            if cached and cached[0] == generation:
+                return cached[1]
+            payload = json.loads(blob.download_as_text(encoding="utf-8"))
+            self._remote_cache[filename] = (generation, payload)
+            return payload
+        except Exception:
+            return None
+
+    @staticmethod
+    def _capture_timestamp(payload: dict[str, Any]) -> float | None:
+        raw = payload.get("_meta", {}).get("fetched_at") or payload.get("fetched_at")
+        if not raw:
+            return None
+        try:
+            return datetime.fromisoformat(str(raw).replace("Z", "+00:00")).timestamp()
+        except (TypeError, ValueError):
+            return None
+
+    def _fresh_reference(self, filename: str) -> dict[str, Any]:
+        """Choose the newest proven reference cache across image and GCS."""
+        try:
+            local = self._read_local(filename)
+        except SnapshotNotFoundError:
+            local = None
+        remote = self._read_remote(filename)
+        if local is None:
+            if remote is None:
+                raise SnapshotNotFoundError(filename)
+            return remote
+        if remote is None:
+            return local
+        local_time = self._capture_timestamp(local)
+        remote_time = self._capture_timestamp(remote)
+        if local_time is not None and (remote_time is None or local_time >= remote_time):
+            return local
+        if remote_time is not None:
+            return remote
+        # Preserve the historical remote-first behavior only when neither
+        # candidate carries provenance.
+        return remote
+
+    def read(self, filename: str) -> dict[str, Any]:
+        remote = self._read_remote(filename)
+        if remote is not None:
+            return remote
+        # Packaged data remains a fail-soft recovery source if GCS is
+        # temporarily unavailable or the requested artifact is not published.
+        return self._read_local(filename)
 
     def league(self, league_id: int, gameweek: int) -> dict[str, Any]:
         return self.read(f"gw{gameweek}_league{league_id}_data.json")
 
     def bootstrap(self) -> dict[str, Any]:
-        return self.read("bootstrap_cache.json")
+        return self._fresh_reference("bootstrap_cache.json")
 
     def fixtures(self, gameweek: int) -> list[dict[str, Any]]:
         try:
-            payload = self.read("fixtures_cache.json")
+            payload = self._fresh_reference("fixtures_cache.json")
             return payload.get("gameweeks", {}).get(str(gameweek), [])
         except SnapshotNotFoundError:
             pass

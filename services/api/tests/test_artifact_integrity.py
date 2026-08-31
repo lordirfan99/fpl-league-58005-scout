@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from app.validation import snapshot_quality
+from app.repository import SnapshotRepository
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -83,3 +84,28 @@ def test_bootstrap_provenance_hash_matches_the_official_payload_body() -> None:
     assert meta["source"] == "official-fpl-api/bootstrap-static"
     assert meta["fetched_at"]
     assert meta["content_sha256"] == calculated
+
+
+def test_reference_cache_prefers_newest_proven_source(tmp_path: Path, monkeypatch) -> None:
+    local = {
+        "elements": [{"id": 1}],
+        "_meta": {"fetched_at": "2026-08-31T12:00:00+00:00"},
+    }
+    (tmp_path / "bootstrap_cache.json").write_text(json.dumps(local), encoding="utf-8")
+    repository = SnapshotRepository(tmp_path)
+    monkeypatch.setattr(
+        repository,
+        "_read_remote",
+        lambda _filename: {"elements": [{"id": 2}]},
+    )
+    assert repository.bootstrap()["elements"] == [{"id": 1}]
+
+    monkeypatch.setattr(
+        repository,
+        "_read_remote",
+        lambda _filename: {
+            "elements": [{"id": 3}],
+            "_meta": {"fetched_at": "2026-08-31T13:00:00+00:00"},
+        },
+    )
+    assert repository.bootstrap()["elements"] == [{"id": 3}]

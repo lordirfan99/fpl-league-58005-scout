@@ -69,3 +69,17 @@ No leakage was found in the one verifiable GW2 capture. Absence of leakage acros
 
 Step 5 therefore does not pass as a critical release gate. Production execution remains protected by Telegram authority and safe-hold logic, but historical integrity and frontend freshness controls require permanent fixes and regression tests.
 
+## Post-remediation gate rerun
+
+The initial failures above are retained as audit evidence. After remediation:
+
+| Initial failure | Permanent control and rerun result |
+|---|---|
+| Final snapshot immutability | Writers refuse overwrite by default; explicit corrections require a reason; five finalized artifacts are CI-manifested — PASS |
+| Journal immutability | Identical rerun is idempotent, changed content is rejected, detail/index hashes are verified on read, tamper tests pass — PASS |
+| Bootstrap provenance | Official refresh now records source, capture time and content SHA-256; API selects the freshest proven local/GCS reference — PASS after live redeploy verification |
+| Frontend mismatch | Only 404/409 can select an archive fallback; requested and returned GWs/reason are visible; browser regression passes — PASS |
+| Frozen GW1 prediction | Still missing — INSUFFICIENT EVIDENCE for model scoring, not an engineering publication defect |
+
+The corrected Step 5 engineering integrity gate is **PASS**, while historical model-performance evidence remains insufficient and blocks model promotion.
+
