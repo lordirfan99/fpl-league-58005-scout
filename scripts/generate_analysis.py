@@ -102,8 +102,11 @@ def analyze_squad_ownership(competitors, player_map=None):
         if cap:
             captain_choices[cap] += 1
         
-        # Formation
-        comp_data = comp.get('squad_composition', {})
+        # Formation — use the STARTING XI composition (fetch now records it
+        # separately from squad_composition, which counts all 15 picks).
+        # Fall back to squad_composition for older/fetched-without-field data,
+        # but flag it since it's the 15-pick spread, not the on-field shape.
+        comp_data = comp.get('starting_xi_composition') or comp.get('squad_composition', {})
         gkp = comp_data.get('GKP', 0)
         deff = comp_data.get('DEF', 0)
         mid = comp_data.get('MID', 0)
@@ -188,17 +191,24 @@ def analyze_transfers(competitors):
     hit_takers = 0
     
     for comp in competitors:
-        transfers = comp.get('transfers', {}).get('transfers', [])
-        if transfers:
+        # PRIMARY count: the FPL detail endpoint (/event/{gw}/transfers/) returns
+        # HTTP 404 even for teams that DID transfer, so it can't be trusted alone.
+        # The authoritative count is gw_transfers (= history event_transfers),
+        # which is populated for every GW regardless. Prefer it, then top up with
+        # raw transfer-detail length from the (unreliable) endpoint when present.
+        detail_list = comp.get('transfers', {}).get('transfers', [])
+        gw_tx = comp.get('gw_transfers', 0) or 0
+        n_transfers = max(gw_tx, len(detail_list))
+        if n_transfers > 0:
             teams_with_transfers += 1
-            total_transfers += len(transfers)
-            
+            total_transfers += n_transfers
+
             # Check for hits
             cost = comp.get('gw_transfers_cost', 0)
             if cost > 0:
                 hit_takers += 1
-            
-            for t in transfers:
+
+            for t in detail_list:
                 td = comp.get('transfer_details', [])
                 for detail in td:
                     most_transferred_out[detail['out']] += 1

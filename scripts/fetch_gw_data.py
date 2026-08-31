@@ -266,14 +266,21 @@ def fetch_competitor_data(entry_id, gw, player_map):
         result['captain'] = captain['name'] if captain else 'N/A'
         result['vice_captain'] = vice['name'] if vice else 'N/A'
 
-        # Squad composition
+        # Squad composition — STARTING XI ONLY (multiplier > 0 = on field).
+        # Counting all 15 picks yields a meaningless 2-5-5-3 for everyone;
+        # the on-field XI is picks with multiplier > 0 (captain = 2, rest = 1,
+        # bench = 0). This is the number FPL reports as the formation.
         positions = defaultdict(int)
+        starting_xi = defaultdict(int)
         teams_in_squad = defaultdict(int)
         for s in squad:
             positions[s['position']] += 1
+            if s['multiplier'] > 0:
+                starting_xi[s['position']] += 1
             if s['team'] and s['team'] != '?':
                 teams_in_squad[s['team']] += 1
         result['squad_composition'] = dict(positions)
+        result['starting_xi_composition'] = dict(starting_xi)
         result['squad_teams'] = dict(teams_in_squad)
         result['squad_cost'] = sum(s['cost'] for s in squad)
 
