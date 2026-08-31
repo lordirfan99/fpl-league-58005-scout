@@ -194,3 +194,99 @@ def test_telegram_is_honestly_disconnected() -> None:
     response = client.get("/v1/integration/status")
     assert response.status_code == 200
     assert response.json()["approvals_enabled"] is False
+
+
+# --- Regression: live/in-progress GW snapshots must not 500 ---
+# The FPL API can return null picks, non-numeric multipliers, bare-string
+# squad entries, or even null competitor rows for a gameweek still in
+# progress. snapshot_quality historically crashed on these with an uncaught
+# exception -> HTTP 500, which poisoned /v1/me/team and /v1/leagues/* and
+# silently rolled the whole dashboard back to GW1. These tests pin that the
+# validation layer now fails soft (returns issues, never raises).
+
+def _malformed_snapshot(competitors):
+    return {
+        "gw": 2, "league_id": 58005, "fetched_at": "2026-08-30T00:00:00Z",
+        "total_entries": len(competitors), "errors": 0, "competitors": competitors,
+    }
+
+
+def _valid_competitor(entry_id: int, squad) -> dict:
+    return {
+        "entry_id": entry_id, "entry_name": "Test FC", "player_name": "T",
+        "league_rank": 1, "gw_points": 50, "total_points": 50, "rank": 1000,
+        "squad": squad, "captain": "P2", "vice_captain": "P3",
+        "squad_composition": {"DEF": 5}, "squad_teams": {"ARS": 3},
+        "squad_cost": 80.0, "active_players_count": 11, "injured_count": 0,
+        "transfers_made": 0, "chips_used": [],
+    }
+
+
+def _full_squad() -> list[dict]:
+    # Full squad shape 2-5-5-3 (15 picks). First 11 forms a legal XI:
+    # 1 GKP, 4 DEF, 4 MID, 2 FWD; the 4 bench complete 2-5-5-3 (GKP/DEF/MID/FWD).
+    xi = ["GKP"] + ["DEF"] * 4 + ["MID"] * 4 + ["FWD"] * 2          # 11
+    bench = ["GKP"] + ["DEF"] + ["MID"] + ["FWD"]                    # 4
+    positions = xi + bench
+    squad = []
+    for i in range(1, 16):
+        # XI (first 11) have positive multiplier; bench (last 4) have 0.
+        mult = 2 if i == 1 else (1 if i <= 11 else 0)
+        squad.append({
+            "element": i, "name": f"P{i}",
+            "position": positions[i - 1],
+            "team": "ARS", "cost": 5.0, "is_captain": False, "is_vice_captain": False,
+            "multiplier": mult, "position_order": i, "selected_by": 10, "form": 0,
+            "total_points": 0, "points_per_game": 0, "status": "a",
+            "chance_of_playing": 100, "news": "", "minutes": 0, "starts": 0,
+            "expected_goals": 0, "expected_assists": 0, "expected_goals_per_90": 0,
+            "expected_assists_per_90": 0,
+        })
+    squad[0]["is_captain"] = True
+    squad[1]["is_vice_captain"] = True
+    return squad
+
+
+def test_null_pick_in_live_gw_snapshot_does_not_crash() -> None:
+    c = _valid_competitor(1, [None] + _full_squad()[1:])
+    quality, issues = main.snapshot_quality(_malformed_snapshot([c]))
+    assert quality == "invalid"
+    assert any("squad_non_dict_picks" in issue for issue in issues)
+
+
+def test_non_numeric_multiplier_does_not_crash() -> None:
+    squad = _full_squad()
+    squad[1]["multiplier"] = "not-an-int"
+    c = _valid_competitor(2, squad)
+    quality, issues = main.snapshot_quality(_malformed_snapshot([c]))
+    assert quality == "invalid"
+    assert any("scoring_players" in issue for issue in issues)
+
+
+def test_null_competitor_row_does_not_crash() -> None:
+    quality, issues = main.snapshot_quality(_malformed_snapshot([None]))
+    assert quality == "invalid"
+    assert "competitor_malformed" in issues
+
+
+def test_bare_string_squad_entry_does_not_crash() -> None:
+    squad = ["GKP"] + _full_squad()[1:]
+    c = _valid_competitor(3, squad)
+    quality, issues = main.snapshot_quality(_malformed_snapshot([c]))
+    assert quality == "invalid"
+
+
+def test_non_numeric_total_entries_does_not_crash() -> None:
+    snapshot = _malformed_snapshot([_valid_competitor(1, _full_squad())])
+    snapshot["total_entries"] = "one-thousand"
+    quality, issues = main.snapshot_quality(snapshot)
+    assert quality == "invalid"
+    assert any("total_entries_non_numeric" in issue for issue in issues)
+
+
+def test_valid_snapshot_still_reports_valid() -> None:
+    c = _valid_competitor(1, _full_squad())
+    snapshot = _malformed_snapshot([c])
+    snapshot["errors"] = 0
+    quality, _ = main.snapshot_quality(snapshot)
+    assert quality == "valid"
