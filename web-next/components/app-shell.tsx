@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeftRight, BarChart3, Beaker, BookOpenText, Bot, Cpu, Layers3, LayoutDashboard, ListChecks, Menu, RefreshCcw, Settings, Shield, Trophy, Users, X } from "lucide-react";
 
 const navigation = [
@@ -29,6 +29,8 @@ const mobilePrimary = ["/my-team", "/assistant", "/planner", "/journal"];
 export function AppShell({ children, context }: { children: React.ReactNode; context?: PlanningContext }) {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
+  const [navigationReady, setNavigationReady] = useState(false);
+  useEffect(() => setNavigationReady(true), []);
   const planningLabel = context?.planningGw ? `Planning GW${context.planningGw}` : "Planning context loading";
   return (
     <div className="app-frame">
@@ -52,7 +54,7 @@ export function AppShell({ children, context }: { children: React.ReactNode; con
         <main>{children}</main>
         <nav className="mobile-nav" aria-label="Mobile navigation">
           {navigation.filter((item) => mobilePrimary.includes(item.href)).map(({ href, label, icon: Icon }) => <Link key={href} href={href} className={pathname === href ? "active" : ""}><Icon size={19} /><span>{label}</span></Link>)}
-          <button type="button" className={moreOpen ? "active" : ""} onClick={() => setMoreOpen((open) => !open)} aria-expanded={moreOpen} aria-controls="mobile-more-menu">{moreOpen ? <X size={19} /> : <Menu size={19} />}<span>More</span></button>
+            <button type="button" disabled={!navigationReady} className={moreOpen ? "active" : ""} onClick={() => setMoreOpen((open) => !open)} aria-expanded={moreOpen} aria-controls="mobile-more-menu">{moreOpen ? <X size={19} /> : <Menu size={19} />}<span>More</span></button>
         </nav>
         {moreOpen ? <div className="mobile-more-menu" id="mobile-more-menu"><div><strong>Research & tools</strong><button type="button" aria-label="Close more navigation" onClick={() => setMoreOpen(false)}><X size={16} /></button></div>{navigation.filter((item) => !mobilePrimary.includes(item.href)).map(({ href, label, icon: Icon }) => <Link key={href} href={href} onClick={() => setMoreOpen(false)} className={pathname === href ? "active" : ""}><Icon size={17} /><span>{label}</span></Link>)}</div> : null}
       </div>

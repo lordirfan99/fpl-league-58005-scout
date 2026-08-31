@@ -46,7 +46,10 @@ test("mobile navigation exposes primary and overflow destinations", async ({ pag
   await page.goto("/my-team", { waitUntil: "domcontentloaded" });
   const mobileNav = page.getByRole("navigation", { name: "Mobile navigation" });
   await expect(mobileNav.getByRole("link", { name: "My Team" })).toBeVisible();
-  await mobileNav.getByRole("button", { name: "More" }).click();
+  const more = mobileNav.getByRole("button", { name: "More" });
+  await expect(more).toBeEnabled();
+  await more.click();
+  await expect(more).toHaveAttribute("aria-expanded", "true");
   await expect(page.getByRole("link", { name: "Settings" })).toBeVisible();
 });
 
