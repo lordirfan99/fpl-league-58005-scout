@@ -4,7 +4,7 @@ Audit date: 2026-08-31
 
 ## Outcome
 
-The repository is engineering-ready for a guarded read-only release once the final pushed revision passes CI and live smoke verification. Nine P1 defects were reproduced and permanently fixed, including V5 BGW/DGW math, reversed clean-sheet difficulty, misleading uncertainty labels, illegal transfer suggestions, silent gameweek fallback and mutable historical records. No open P0/P1 defect remains.
+The guarded read-only engineering release is deployed and verified. The final pushed application passed CI, Cloud Run smoke and the live Netlify critical-flow checks. Nine P1 defects were reproduced and permanently fixed, including V5 BGW/DGW math, reversed clean-sheet difficulty, misleading uncertainty labels, illegal transfer suggestions, silent gameweek fallback and mutable historical records. No open P0/P1 defect remains.
 
 This is not a model-performance endorsement. There are no finalized out-of-sample paired weeks available for V5 accuracy or calibration scoring. V5 remains **RESEARCH**, V4.2 remains **non-executable SHADOW**, and `competitive-v4.0` remains the production champion without a new accuracy claim.
 
@@ -29,7 +29,7 @@ Scores reflect evidence available in this audit, not product ambition.
 
 ## Decision
 
-- **Engineering:** GREEN only after the recorded final CI and production smoke pass.
+- **Engineering:** GREEN and deployed; final CI and production smoke passed.
 - **Models:** keep current separation; do not promote V5 or V4.2.
 - **Next priorities:** reduce league payloads, expose runtime/data revision readiness, capture every pre-deadline prediction, then report walk-forward MAE/RMSE/bias/rank/calibration by GW and position.
 

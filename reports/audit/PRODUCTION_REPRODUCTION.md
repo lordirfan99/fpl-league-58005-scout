@@ -52,5 +52,5 @@ The deployed hardening revision was rechecked after the initial baseline:
 - Cloud Run workflow smoke passed with `competitive-v4.0`, valid recommendation quality, Telegram authority and dashboard writes disabled.
 - Live V5 rows expose `heuristic_not_calibrated` and range labels; the production endpoint retains 626 current players because the GCS catalogue was newer in roster membership but lacked provenance.
 - That GCS/local selection issue was reproduced and fixed so reference caches select the newest timestamped, proven source; a regression test covers proven-local versus newer-proven-remote selection.
-- The real Netlify suite passed 16 flows with one intentional desktop skip, then found the injected Netlify badge intercepting the mobile `More` control. The badge is now made pointer-transparent and requires the final redeploy rerun before the release verdict is closed.
+- The real Netlify suite first passed 16 flows with one intentional desktop skip and exposed the injected badge/early-hydration mobile issue. After the permanent fix, the final deployed mobile rerun passed; all 17 applicable production flows therefore have passing evidence.
 

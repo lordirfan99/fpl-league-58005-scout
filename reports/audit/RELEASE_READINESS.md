@@ -6,7 +6,7 @@ Audit date: 2026-08-31
 
 | Scope | Status | Confidence | Decision |
 |---|---|---|---|
-| Engineering hardening | GREEN pending final production smoke | HIGH | Safe to deploy after CI/live verification |
+| Engineering hardening | GREEN | HIGH | Deployed; CI and live verification passed |
 | Production `competitive-v4.0` operations | PRODUCTION | LOW for predictive accuracy; HIGH for identity/isolation | Keep champion; no accuracy claim |
 | `competitive-v4.2-shadow` | SHADOW / non-executable | LOW | Continue collecting evidence; do not promote |
 | `projection-v5.0-lab` | RESEARCH | LOW | Do not use as execution authority |
@@ -38,4 +38,4 @@ P0 open: **0**. P1 open: **0**. Six P2 risks/accepted limitations remain in the 
 
 ## Release rule
 
-The engineering release may be green only after the pushed SHA passes GitHub CI, Cloud Run deployment smoke and the live Netlify critical-flow test. Model readiness remains separate: no V5/V4.2 promotion is authorized by this audit.
+The pushed application passed GitHub CI, Cloud Run deployment smoke and the live Netlify critical-flow test. The engineering release is **GREEN and deployed**. Model readiness remains separate: no V5/V4.2 promotion is authorized by this audit.
