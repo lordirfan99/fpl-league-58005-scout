@@ -1,8 +1,8 @@
 # FPL Scout Control Centre — current status
 
-**Status date:** 30 August 2026  
+**Status date:** 31 August 2026  
 **Branch:** `master`  
-**Latest commit:** `6d75594 feat: add live FPL team polling with snapshot fallback`
+**Status baseline:** `d798b38 data: refresh official FPL fixtures`, plus the API provisional-snapshot guard documented below
 
 ## Production URLs
 
@@ -63,10 +63,18 @@ The live endpoint currently reports:
 - `GET /v1/leagues/58005?gw=1`: HTTP 200.
 - `GET /v1/leagues/58005?gw=2`: currently unavailable because the GW2 league snapshot has not been collected yet; this is expected during the live/provisional phase.
 
+## 31 August production audit
+
+- Scheduled fixture refresh: **passed**.
+- Scheduled pre-deadline journal capture: **passed**.
+- Scheduled completed-Gameweek check: **passed** and correctly left GW1 as the latest finalized archive because GW2 is still provisional.
+- API validation regression suite after the provisional-snapshot guard: **32 passed**.
+- The GW2 provisional league payload is rejected with `409 snapshot_not_finalized`; it no longer reaches response-model validation as an opaque HTTP 500.
+- Dashboard `/my-team`, `/journal` and `/settings`: HTTP 200.
+
 ## Known limitations and next operational steps
 
 1. The live endpoint currently covers the configured personal team. Live league-wide polling is intentionally not enabled because it would require paginating the league and fetching hundreds of manager squads, creating avoidable load and inconsistent mid-gameweek comparisons.
 2. After GW2 is locked and data-checked, run or allow `refresh-gameweek.yml` to publish the GW2 snapshots and journal record.
 3. Confirm the next refresh with `/v1/leagues/58005?gw=2`, `/v1/journal?season=2026-27` and the dashboard's Journal page.
 4. Keep the live layer for current decisions and the snapshot layer for auditability; do not merge provisional live rows into the historical journal.
-

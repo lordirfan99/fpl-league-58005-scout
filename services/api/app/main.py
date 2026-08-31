@@ -155,6 +155,21 @@ def league_registry_list() -> dict:
 def league(league_id: int, gw: int | None = Query(default=None, ge=1, le=38)) -> LeagueResponse:
     gw = gw or _current_gameweek()
     snapshot = _league_or_404(league_id, gw)
+    quality_status, quality_issues = snapshot_quality(snapshot)
+    if quality_status != "valid":
+        # Live/in-progress collector output may exist before it satisfies the
+        # stable LeagueResponse contract. Do not let response-model validation
+        # turn that expected provisional state into an opaque HTTP 500.
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "snapshot_not_finalized",
+                "league_id": league_id,
+                "gameweek": gw,
+                "quality_status": quality_status,
+                "quality_issues": quality_issues[:10],
+            },
+        )
     managers = sorted(snapshot.get("competitors", []), key=lambda item: item.get("league_rank") or 10**12)
     declared_count = int(snapshot.get("total_entries") or len(managers))
     return LeagueResponse(

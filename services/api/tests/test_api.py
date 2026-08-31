@@ -290,3 +290,18 @@ def test_valid_snapshot_still_reports_valid() -> None:
     snapshot["errors"] = 0
     quality, _ = main.snapshot_quality(snapshot)
     assert quality == "valid"
+
+
+def test_provisional_league_snapshot_returns_conflict_not_500(monkeypatch) -> None:
+    incomplete = _valid_competitor(1, _full_squad())
+    incomplete["squad_cost"] = None
+    incomplete["squad"] = [None] + incomplete["squad"][1:]
+    monkeypatch.setattr(main.repository, "league", lambda league_id, gameweek: _malformed_snapshot([incomplete]))
+
+    response = client.get("/v1/leagues/58005?gw=2")
+
+    assert response.status_code == 409
+    payload = response.json()["detail"]
+    assert payload["code"] == "snapshot_not_finalized"
+    assert payload["gameweek"] == 2
+    assert payload["quality_status"] == "invalid"
