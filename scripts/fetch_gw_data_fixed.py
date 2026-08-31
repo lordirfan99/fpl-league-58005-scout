@@ -33,9 +33,16 @@ def get_entry_transfers_fixed(entry_id, gw):
 base.get_entry_transfers = get_entry_transfers_fixed
 
 
-def write_outputs(gw, league_id, competitors, errors):
+def write_outputs(gw, league_id, competitors, errors, *, allow_correction=False):
     fetched_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     full_path = os.path.join(DATA_DIR, f"gw{gw}_league{league_id}_data.json")
+    compact_path = os.path.join(DATA_DIR, f"gw{gw}_league{league_id}_compact.json")
+    existing = [path for path in (full_path, compact_path) if os.path.exists(path)]
+    if existing and not allow_correction:
+        raise FileExistsError(
+            "refusing to overwrite finalized snapshot(s): " + ", ".join(existing)
+            + "; use --allow-correction only with a documented correction"
+        )
     payload = {
         "gw": gw,
         "league_id": league_id,
@@ -47,7 +54,6 @@ def write_outputs(gw, league_id, competitors, errors):
     with open(full_path, "w") as f:
         json.dump(payload, f, indent=2)
 
-    compact_path = os.path.join(DATA_DIR, f"gw{gw}_league{league_id}_compact.json")
     compact = {
         "gw": gw,
         "league_id": league_id,
@@ -92,6 +98,8 @@ def main():
     parser.add_argument("--league", type=int, nargs="+", default=[58005, 131997])
     parser.add_argument("--max", type=int, default=3000)
     parser.add_argument("--workers", type=int, default=16)
+    parser.add_argument("--allow-correction", action="store_true",
+                        help="Explicitly replace an existing finalized snapshot")
     args = parser.parse_args()
 
     os.makedirs(DATA_DIR, exist_ok=True)
@@ -154,7 +162,7 @@ def main():
             c["league_total"] = standing.get("total_points", 0)
             c["league_last_rank"] = standing.get("last_rank", 0)
             competitors.append(c)
-        write_outputs(args.gw, league_id, competitors, errors)
+        write_outputs(args.gw, league_id, competitors, errors, allow_correction=args.allow_correction)
 
     print(f"Done: {len(ids)} unique managers across {len(args.league)} leagues; errors={errors}", file=sys.stderr)
     return 0

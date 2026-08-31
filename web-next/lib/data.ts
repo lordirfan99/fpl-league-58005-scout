@@ -9,6 +9,12 @@ export const DEFAULT_LEAGUE_ID = 58005;
 export const DEFAULT_GAMEWEEK = 1;
 export type LeagueDashboardData = Omit<DashboardData, "manager"> & { manager?: Manager };
 
+class ApiRequestError extends Error {
+  constructor(public status: number, path: string) {
+    super(`Scout API returned ${status} for ${path}`);
+  }
+}
+
 async function readJson<T>(path: string): Promise<T> {
   const cached = memoryCache.get(path);
   if (cached && cached.expiresAt > Date.now()) return cached.value as T;
@@ -51,7 +57,7 @@ export async function getLeagueData(leagueId = DEFAULT_LEAGUE_ID, gameweek?: num
     readJson<Record<string, Fixture[]>>(`gw${Math.min(resolvedGameweek + 1, 38)}_fixtures.json`).catch((): Record<string, Fixture[]> => ({})),
   ]);
   const manager = snapshot.competitors.find((entry) => entry.entry_id === MY_TEAM_ID);
-  return { manager, managers: snapshot.competitors, bootstrap, fixture: fixturePayload[`gw${Math.min(resolvedGameweek + 1, 38)}`] ?? [], gameweek: resolvedGameweek, leagueId, fetchedAt: snapshot.fetched_at };
+  return { manager, managers: snapshot.competitors, bootstrap, fixture: fixturePayload[`gw${Math.min(resolvedGameweek + 1, 38)}`] ?? [], gameweek: resolvedGameweek, leagueId, fetchedAt: snapshot.fetched_at, requestedGameweek: resolvedGameweek, snapshotStatus: "exact" };
 }
 
 async function getLeagueDataFromApi(leagueId: number, gameweek?: number): Promise<LeagueDashboardData> {
@@ -61,7 +67,7 @@ async function getLeagueDataFromApi(leagueId: number, gameweek?: number): Promis
   type CatalogPayload = { players: Bootstrap["elements"]; teams: Bootstrap["teams"]; events: Bootstrap["events"] };
   const request = async <T>(path: string) => {
     const response = await fetch(`${API_BASE}${path}`, { cache: "no-store" });
-    if (!response.ok) throw new Error(`Scout API returned ${response.status} for ${path}`);
+    if (!response.ok) throw new ApiRequestError(response.status, path);
     return response.json() as Promise<T>;
   };
   const resolvedGameweek = gameweek ?? (await request<IdentityPayload>("/v1/me")).current_gameweek ?? DEFAULT_GAMEWEEK;
@@ -76,13 +82,15 @@ async function getLeagueDataFromApi(leagueId: number, gameweek?: number): Promis
   // error page.  This is especially important for large/public leagues.
   let league: LeaguePayload | null = null;
   let snapshotGameweek = resolvedGameweek;
+  let snapshotStatus: DashboardData["snapshotStatus"] = "exact";
   for (let candidate = resolvedGameweek; candidate >= 1; candidate -= 1) {
     try {
       league = await request<LeaguePayload>(`/v1/leagues/${leagueId}?gw=${candidate}`);
       snapshotGameweek = candidate;
       break;
-    } catch {
-      // Try the previous collected gameweek.
+    } catch (error) {
+      if (!(error instanceof ApiRequestError) || ![404, 409].includes(error.status)) throw error;
+      if (candidate === resolvedGameweek) snapshotStatus = error.status === 409 ? "fallback_provisional" : "fallback_missing";
     }
   }
   if (!league) throw new Error(`No league snapshot available for league ${leagueId}`);
@@ -95,6 +103,8 @@ async function getLeagueDataFromApi(leagueId: number, gameweek?: number): Promis
     gameweek: snapshotGameweek,
     leagueId,
     fetchedAt: team?.meta.snapshot_at ?? team?.meta.generated_at ?? league.meta?.snapshot_at ?? league.meta?.generated_at,
+    requestedGameweek: resolvedGameweek,
+    snapshotStatus: snapshotGameweek === resolvedGameweek ? "exact" : snapshotStatus,
   };
 }
 

@@ -15,6 +15,33 @@ JOURNAL_SCHEMA_VERSION = 1
 DEFAULT_SEASON = "2026-27"
 
 
+def record_hash(payload: dict[str, Any]) -> str:
+    body = dict(payload)
+    body.pop("record_hash", None)
+    canonical = json.dumps(body, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def verify_record_hash(payload: dict[str, Any]) -> bool:
+    return bool(payload.get("record_hash") and payload["record_hash"] == record_hash(payload))
+
+
+def write_immutable_record(path: Path, payload: dict[str, Any]) -> bool:
+    """Create a frozen record once; identical reruns are safe no-ops."""
+    if not verify_record_hash(payload):
+        raise ValueError("journal record hash is invalid")
+    if path.is_file():
+        existing = json.loads(path.read_text(encoding="utf-8"))
+        if not verify_record_hash(existing):
+            raise ValueError(f"existing journal record failed integrity verification: {path}")
+        if existing == payload:
+            return False
+        raise FileExistsError(f"immutable journal record already exists with different content: {path}")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    return True
+
+
 def _number(value: Any, default: float = 0.0) -> float:
     try:
         return float(value if value is not None else default)
@@ -125,8 +152,7 @@ def build_gameweek_journal(
             "sources": ["official-fpl", "league-snapshot", "competitive-v4", "projection-v5-lab"],
         },
     }
-    canonical = json.dumps(result, sort_keys=True, separators=(",", ":")).encode()
-    result["record_hash"] = hashlib.sha256(canonical).hexdigest()
+    result["record_hash"] = record_hash(result)
     return result
 
 

@@ -11,7 +11,7 @@ export default async function V5LabPage() {
   return <div className="page-stack v5-page">
     <PageHeader eyebrow="PLAYER INTELLIGENCE · RESEARCH LANE" title="V5 Projection Lab" description="Independent football projections, uncertainty and decision research—kept outside the live execution path." updated={data.generated_at ? new Date(data.generated_at).toLocaleString("en-MY", { timeZone: "Asia/Kuala_Lumpur" }) : undefined} />
     <section className="v5-hero">
-      <div><span><FlaskConical size={15} /> ISOLATED LABORATORY</span><h2>Predict football first.<br />Fight the league second.</h2><p>V5 separates raw player ability and fixture outcomes from ownership, rank and captaincy pressure. It cannot replace production or execute an FPL action.</p></div>
+      <div><span><FlaskConical size={15} /> ISOLATED LABORATORY</span><h2>Predict football first.<br />Fight the league second.</h2><p>V5 separates raw player ability and fixture outcomes from ownership, rank and captaincy pressure. Its low/high ranges are heuristic, not calibrated quantiles. It cannot replace production or execute an FPL action.</p></div>
       <div className={`v5-live-orb ${data.available ? "online" : "offline"}`}><Activity size={25} /><strong>{data.available ? "LIVE" : "LOCAL"}</strong><small>{data.projection_version}</small></div>
     </section>
     <div className="model-lanes">

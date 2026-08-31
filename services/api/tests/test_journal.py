@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from app.journal import build_gameweek_journal, build_index
+from app.journal import build_gameweek_journal, build_index, verify_record_hash, write_immutable_record
 from app.main import app
+from app.repository import ArtifactIntegrityError, SnapshotRepository
 from fastapi.testclient import TestClient
 
 
@@ -42,3 +43,37 @@ def test_journal_builder_is_deterministic_and_private_notes_are_not_inputs() -> 
     assert first["summary"]["captain_points"] == 5
     assert "private" not in str(first).lower()
     assert build_index([first], "2026-27")["totals"]["completed"] == 1
+    assert verify_record_hash(first)
+
+
+def test_journal_record_cannot_be_replaced_or_silently_tampered(tmp_path) -> None:
+    payload = {"season": "2026-27", "gameweek": 1, "record_hash": ""}
+    from app.journal import record_hash
+    payload["record_hash"] = record_hash(payload)
+    path = tmp_path / "gw01.json"
+    assert write_immutable_record(path, payload) is True
+    assert write_immutable_record(path, payload) is False
+    replacement = dict(payload); replacement["gameweek"] = 2
+    replacement["record_hash"] = record_hash(replacement)
+    import pytest
+    with pytest.raises(FileExistsError):
+        write_immutable_record(path, replacement)
+    path.write_text(path.read_text(encoding="utf-8").replace('"gameweek": 1', '"gameweek": 9'), encoding="utf-8")
+    with pytest.raises(ValueError):
+        write_immutable_record(path, replacement)
+
+
+def test_journal_index_cannot_reference_a_different_record_hash(tmp_path) -> None:
+    import json
+    import pytest
+    root = tmp_path / "journal" / "2026-27"
+    root.mkdir(parents=True)
+    payload = {"season": "2026-27", "gameweek": 1, "record_hash": ""}
+    from app.journal import record_hash
+    payload["record_hash"] = record_hash(payload)
+    (root / "gw01.json").write_text(json.dumps(payload), encoding="utf-8")
+    (root / "index.json").write_text(json.dumps({
+        "gameweeks": [{"gameweek": 1, "record_hash": "wrong"}],
+    }), encoding="utf-8")
+    with pytest.raises(ArtifactIntegrityError):
+        SnapshotRepository(tmp_path).journal_index("2026-27")

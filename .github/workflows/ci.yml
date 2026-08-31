@@ -30,6 +30,10 @@ jobs:
       - run: npm run build
         env:
           FPL_API_BASE_URL: https://fpl-scout-api-bztsnhv3ea-uc.a.run.app
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+        env:
+          FPL_API_BASE_URL: https://fpl-scout-api-bztsnhv3ea-uc.a.run.app
 
   api:
     runs-on: ubuntu-latest
@@ -44,6 +48,7 @@ jobs:
       - run: python -m pytest services/api/tests
         env:
           PYTHONPATH: services/api
+      - run: python scripts/frozen_artifacts.py
       - run: >-
           python -m py_compile
           integration/gcp-bot/dashboard_bridge.py
@@ -52,3 +57,5 @@ jobs:
           scripts/capture_predeadline_journal.py
           scripts/build_gameweek_journal.py
           scripts/journal_notes.py
+          scripts/audit_model_backtest.py
+          scripts/frozen_artifacts.py

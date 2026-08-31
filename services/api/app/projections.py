@@ -47,23 +47,32 @@ def expected_minutes(player: dict[str, Any]) -> ExpectedMinutes:
     )
 
 
+def fixture_multipliers(
+    player: dict[str, Any], fixtures: list[dict[str, Any]], teams: dict[int, str]
+) -> list[tuple[float, str]]:
+    team_id = player.get("team")
+    team_name = teams.get(team_id)
+    matches: list[tuple[float, str]] = []
+    for fixture in fixtures:
+        if fixture.get("team_h") in {team_id, team_name}:
+            matches.append((clamp(1.12 - 0.08 * number(fixture.get("team_h_difficulty"), 3), 0.72, 1.12), "home"))
+        elif fixture.get("team_a") in {team_id, team_name}:
+            matches.append((clamp(1.08 - 0.08 * number(fixture.get("team_a_difficulty"), 3), 0.68, 1.08), "away"))
+    return matches
+
+
 def fixture_multiplier(
     player: dict[str, Any], fixtures: list[dict[str, Any]], teams: dict[int, str]
 ) -> tuple[float, str | None]:
-    team_id = player.get("team")
-    team_name = teams.get(team_id)
-    for fixture in fixtures:
-        if fixture.get("team_h") in {team_id, team_name}:
-            return clamp(1.12 - 0.08 * number(fixture.get("team_h_difficulty"), 3), 0.72, 1.12), "home"
-        if fixture.get("team_a") in {team_id, team_name}:
-            return clamp(1.08 - 0.08 * number(fixture.get("team_a_difficulty"), 3), 0.68, 1.08), "away"
-    return 0.90, None
+    """Compatibility helper for callers that need only the first fixture."""
+    matches = fixture_multipliers(player, fixtures, teams)
+    return matches[0] if matches else (0.0, None)
 
 
 def project_player(player: dict[str, Any], teams: dict[int, str], fixtures: list[dict[str, Any]]) -> PlayerProjection:
     position = POSITION_BY_TYPE.get(player.get("element_type"), "FWD")
     minutes = expected_minutes(player)
-    multiplier, venue = fixture_multiplier(player, fixtures, teams)
+    matches = fixture_multipliers(player, fixtures, teams)
     scale = minutes.expected_minutes / 90.0
     xg90 = number(player.get("expected_goals_per_90"))
     xa90 = number(player.get("expected_assists_per_90"))
@@ -71,34 +80,42 @@ def project_player(player: dict[str, Any], teams: dict[int, str], fixtures: list
         xg90 = number(player.get("expected_goals")) / max(1.0, number(player.get("minutes"))) * 90
     if not xa90 and minutes.expected_minutes:
         xa90 = number(player.get("expected_assists")) / max(1.0, number(player.get("minutes"))) * 90
-    expected_goals = xg90 * scale * multiplier
-    expected_assists = xa90 * scale * multiplier
     xgc90 = number(player.get("expected_goals_conceded_per_90"))
-    expected_conceded = max(0.0, xgc90 * scale / max(multiplier, 0.1))
-    clean_sheet_probability = clamp(0.48 * scale * (1.25 - multiplier / 2.0))
     dc90 = number(player.get("defensive_contribution_per_90"))
     if not dc90:
         dc90 = number(player.get("defensive_contribution")) / max(1.0, number(player.get("minutes"))) * 90
-    dc = defensive_contribution_points(position, dc90 * scale)
     saves90 = number(player.get("saves_per_90"))
     if not saves90:
         saves90 = number(player.get("saves")) / max(1.0, number(player.get("minutes"))) * 90
-    components = {
-        "appearance": appearance_points(minutes.expected_minutes, minutes.p_60_plus),
-        "goals": expected_goals * GOAL_POINTS[position],
-        "assists": expected_assists * 3.0,
-        "clean_sheet": clean_sheet_probability * CLEAN_SHEET_POINTS[position],
-        "saves": goalkeeper_save_points(saves90 * scale) if position == "GKP" else 0.0,
-        "defensive_contribution": dc,
-        "goals_conceded": conceded_points(position, expected_conceded),
-        "bonus": number(player.get("bonus")) / max(1.0, number(player.get("minutes"))) * minutes.expected_minutes,
-    }
+    components = {key: 0.0 for key in (
+        "appearance", "goals", "assists", "clean_sheet", "saves",
+        "defensive_contribution", "goals_conceded", "bonus",
+    )}
+    expected_goals = expected_assists = 0.0
+    for multiplier, _venue in matches:
+        fixture_goals = xg90 * scale * multiplier
+        fixture_assists = xa90 * scale * multiplier
+        expected_goals += fixture_goals
+        expected_assists += fixture_assists
+        expected_conceded = max(0.0, xgc90 * scale / max(multiplier, 0.1))
+        # Transparent monotonic heuristic pending an empirically calibrated
+        # team clean-sheet model.  Easier attacking multipliers must never
+        # reduce the clean-sheet term for an otherwise identical player.
+        clean_sheet_probability = clamp(0.45 * minutes.p_60_plus * multiplier)
+        components["appearance"] += appearance_points(minutes.expected_minutes, minutes.p_60_plus)
+        components["goals"] += fixture_goals * GOAL_POINTS[position]
+        components["assists"] += fixture_assists * 3.0
+        components["clean_sheet"] += clean_sheet_probability * CLEAN_SHEET_POINTS[position]
+        components["saves"] += goalkeeper_save_points(saves90 * scale) if position == "GKP" else 0.0
+        components["defensive_contribution"] += defensive_contribution_points(position, dc90 * scale)
+        components["goals_conceded"] += conceded_points(position, expected_conceded)
+        components["bonus"] += number(player.get("bonus")) / max(1.0, number(player.get("minutes"))) * minutes.expected_minutes
     mean = max(0.0, sum(components.values()))
     # A deterministic, transparent uncertainty envelope pending calibrated simulation.
-    spread = max(1.5, mean * 0.65)
+    spread = max(1.5, mean * 0.65) if matches else 0.0
     issues = []
-    if venue is None:
-        issues.append("fixture_missing:fdr_fallback")
+    if not matches:
+        issues.append("blank_gameweek:no_fixture")
     if not (xg90 or xa90):
         issues.append("underlying_attack_missing")
     return PlayerProjection(

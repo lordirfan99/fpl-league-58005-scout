@@ -106,11 +106,15 @@ jobs:
         env:
           GW: ${{ steps.event.outputs.gw }}
         run: |
+          python scripts/frozen_artifacts.py --add \
+            "data/gw${GW}_league58005_data.json" "data/gw${GW}_league58005_compact.json" \
+            "data/gw${GW}_league131997_data.json" "data/gw${GW}_league131997_compact.json" \
+            "data/journal/2026-27/gw$(printf '%02d' "${GW}").json"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add "data/gw${GW}_league58005_data.json" "data/gw${GW}_league58005_compact.json" \
                   "data/gw${GW}_league131997_data.json" "data/gw${GW}_league131997_compact.json" \
-                  data/bootstrap_cache.json "reports/GW${GW}"
+                  data/bootstrap_cache.json data/frozen_artifacts.json "reports/GW${GW}"
           git add "data/journal"
           git commit -m "data: finalize GW${GW} league snapshots"
           git push

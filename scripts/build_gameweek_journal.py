@@ -6,7 +6,7 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]; sys.path.insert(0, str(ROOT / "services" / "api"))
-from app.journal import build_gameweek_journal, build_index, journal_csv, read_journal_entries
+from app.journal import build_gameweek_journal, build_index, journal_csv, read_journal_entries, write_immutable_record
 
 def read(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
@@ -17,45 +17,6 @@ def config() -> dict:
 def live(gw: int) -> dict:
     with urlopen(Request(f"https://fantasy.premierleague.com/api/event/{gw}/live/", headers={"User-Agent": "FPLScoutJournal/1.0"}), timeout=60) as response:
         return json.load(response)
-
-def update_horizon_evaluations(target_dir: Path, completed_gw: int) -> None:
-    """Append reproducible 4/6-GW transfer outcomes once their windows close."""
-    live_cache: dict[int, dict] = {}
-    for path in sorted(target_dir.glob("gw*.json")):
-        entry = read(path)
-        origin_gw = int(entry.get("gameweek") or 0)
-        transfers = (entry.get("decision", {}).get("plan") or {}).get("transfers") or []
-        if not transfers:
-            continue
-        horizons = entry.setdefault("evaluation", {}).setdefault("horizons", [])
-        existing = {int(row.get("weeks") or 0) for row in horizons}
-        changed = False
-        for weeks in (4, 6):
-            if weeks in existing or completed_gw < origin_gw + weeks - 1:
-                continue
-            incoming = outgoing = 0
-            valid_pairs = 0
-            for transfer in transfers:
-                element_in = int(transfer.get("element_in") or 0)
-                element_out = int(transfer.get("element_out") or 0)
-                if not element_in or not element_out:
-                    continue
-                valid_pairs += 1
-                for result_gw in range(origin_gw, origin_gw + weeks):
-                    live_cache.setdefault(result_gw, live(result_gw))
-                    actual = {int(row["id"]): row.get("stats", {}) for row in live_cache[result_gw].get("elements", [])}
-                    incoming += int(actual.get(element_in, {}).get("total_points") or 0)
-                    outgoing += int(actual.get(element_out, {}).get("total_points") or 0)
-            if valid_pairs:
-                horizons.append({"weeks": weeks, "evaluated_through": origin_gw + weeks - 1,
-                                 "transfer_pairs": valid_pairs, "incoming_points": incoming,
-                                 "outgoing_points": outgoing, "gross_gain": incoming - outgoing})
-                changed = True
-        if changed:
-            entry.pop("record_hash", None)
-            canonical = json.dumps(entry, sort_keys=True, separators=(",", ":")).encode()
-            entry["record_hash"] = hashlib.sha256(canonical).hexdigest()
-            path.write_text(json.dumps(entry, indent=2) + "\n", encoding="utf-8")
 
 def main() -> int:
     defaults = config(); parser = argparse.ArgumentParser(); parser.add_argument("--season"); parser.add_argument("--gw", type=int, required=True)
@@ -98,8 +59,10 @@ def main() -> int:
     entry = build_gameweek_journal(season=args.season, gameweek=gw, team_id=args.team, league_id=args.league,
                                    snapshot=snapshot, analysis=analysis, live=live_data, predeadline=predeadline, public_lesson=public_note)
     target_dir = ROOT / "data" / "journal" / args.season; target_dir.mkdir(parents=True, exist_ok=True)
-    (target_dir / f"gw{gw:02d}.json").write_text(json.dumps(entry, indent=2) + "\n", encoding="utf-8")
-    update_horizon_evaluations(target_dir, gw)
+    try:
+        write_immutable_record(target_dir / f"gw{gw:02d}.json", entry)
+    except (ValueError, FileExistsError) as error:
+        raise SystemExit(str(error)) from error
     entries = read_journal_entries(ROOT / "data", args.season)
     (target_dir / "index.json").write_text(json.dumps(build_index(entries, args.season), indent=2) + "\n", encoding="utf-8")
     exports = target_dir / "exports"; exports.mkdir(exist_ok=True)

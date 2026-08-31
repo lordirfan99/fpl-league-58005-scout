@@ -22,7 +22,7 @@ const navigation = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
-type PlanningContext = { latestSnapshotGw?: number; planningGw?: number; deadline?: string; status?: string };
+type PlanningContext = { latestSnapshotGw?: number; requestedSnapshotGw?: number; snapshotStatus?: "exact" | "fallback_missing" | "fallback_provisional"; planningGw?: number; deadline?: string; status?: string };
 
 const mobilePrimary = ["/my-team", "/assistant", "/planner", "/journal"];
 
@@ -48,7 +48,7 @@ export function AppShell({ children, context }: { children: React.ReactNode; con
       </aside>
       <div className="app-content">
         <header className="mobile-header"><Link href="/my-team" className="brand"><span className="brand-mark"><Shield size={18} /></span><strong>Fantasy Scout</strong></Link><span className="live-chip"><span className={context?.status === "rejected" ? "status-dot warning" : "status-dot"} />GW{context?.planningGw ?? "—"}</span></header>
-        <div className="planning-context" role="status"><span>Decision target</span><strong>{planningLabel}</strong>{context?.latestSnapshotGw && context.latestSnapshotGw !== context.planningGw ? <small>Team and league review data currently ends at GW{context.latestSnapshotGw}.</small> : <small>Team, research and decision data are aligned.</small>}<details className="week-rail"><summary>Season weeks</summary><div>{Array.from({ length: 38 }, (_, index) => index + 1).map((gw) => <Link key={gw} href={`/journal?gw=${gw}`} className={gw === context?.latestSnapshotGw ? "archived" : gw === context?.planningGw ? "planning" : ""}>{gw === context?.latestSnapshotGw ? "✓ " : ""}GW{gw}</Link>)}</div></details></div>
+        <div className="planning-context" role="status"><span>Decision target</span><strong>{planningLabel}</strong>{context?.snapshotStatus && context.snapshotStatus !== "exact" ? <small>Requested GW{context.requestedSnapshotGw}; showing the finalized GW{context.latestSnapshotGw} archive because GW{context.requestedSnapshotGw} is {context.snapshotStatus === "fallback_provisional" ? "still provisional" : "not yet archived"}.</small> : context?.latestSnapshotGw && context.latestSnapshotGw !== context.planningGw ? <small>Team and league review data currently ends at GW{context.latestSnapshotGw}.</small> : <small>Team, research and decision data are aligned.</small>}<details className="week-rail"><summary>Season weeks</summary><div>{Array.from({ length: 38 }, (_, index) => index + 1).map((gw) => { const isArchived = gw <= (context?.latestSnapshotGw ?? 0); const isLive = gw === (context?.latestSnapshotGw ?? 0) + 1; const isPlanning = gw === context?.planningGw; const href = isArchived ? `/journal/2026-27/gw/${gw}` : isLive ? "/my-team" : isPlanning ? "/assistant" : `/planner?gw=${gw}`; return <Link key={gw} href={href} className={isArchived ? "archived" : isLive ? "live" : isPlanning ? "planning" : ""}>{isArchived ? "✓ " : isLive ? "• " : isPlanning ? "→ " : ""}GW{gw}</Link>; })}</div></details></div>
         <main>{children}</main>
         <nav className="mobile-nav" aria-label="Mobile navigation">
           {navigation.filter((item) => mobilePrimary.includes(item.href)).map(({ href, label, icon: Icon }) => <Link key={href} href={href} className={pathname === href ? "active" : ""}><Icon size={19} /><span>{label}</span></Link>)}

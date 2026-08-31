@@ -17,7 +17,7 @@ from . import live_fpl
 from .recommendations import MODEL_VERSION, build_recommendations, cohort_summary, elite_managers
 from .projection_types import PROJECTION_VERSION
 from .projections import build_projections
-from .repository import SnapshotNotFoundError, SnapshotRepository
+from .repository import ArtifactIntegrityError, SnapshotNotFoundError, SnapshotRepository
 from .schemas import (
     ApiMeta,
     CatalogResponse,
@@ -202,7 +202,7 @@ def league(league_id: int, gw: int | None = Query(default=None, ge=1, le=38)) ->
 def catalog() -> CatalogResponse:
     bootstrap = repository.bootstrap()
     return CatalogResponse(
-        meta=ApiMeta(source="official-fpl-cache"),
+        meta=_bootstrap_meta(bootstrap),
         players=bootstrap.get("elements", []),
         teams=bootstrap.get("teams", []),
         events=bootstrap.get("events", []),
@@ -221,9 +221,10 @@ def projections_current(
     """
     gw = gw or _current_gameweek()
     target_gw = min(gw + 1, 38)
-    rows = build_projections(repository.bootstrap(), repository.fixtures(target_gw))
+    bootstrap = repository.bootstrap()
+    rows = build_projections(bootstrap, repository.fixtures(target_gw))
     return ProjectionResponse(
-        meta=ApiMeta(source="projection-v5-lab", quality_status="valid"),
+        meta=_bootstrap_meta(bootstrap, source="projection-v5-lab"),
         gameweek=target_gw,
         projection_version=PROJECTION_VERSION,
         players=[row.to_dict() for row in rows],
@@ -257,6 +258,8 @@ def journal_index(season: str = Query(default="2026-27")) -> dict:
         return repository.journal_index(season)
     except SnapshotNotFoundError as error:
         raise HTTPException(status_code=404, detail=f"No journal for season {season}") from error
+    except ArtifactIntegrityError as error:
+        raise HTTPException(status_code=409, detail={"code": "journal_integrity_failure", "message": str(error)}) from error
 
 
 @app.get("/v1/journal/{season}/gw/{gameweek}")
@@ -268,6 +271,8 @@ def journal_gameweek(season: str, gameweek: int) -> dict:
         return repository.journal_gameweek(season, gameweek)
     except SnapshotNotFoundError as error:
         raise HTTPException(status_code=404, detail=f"No {season} GW{gameweek} journal entry") from error
+    except ArtifactIntegrityError as error:
+        raise HTTPException(status_code=409, detail={"code": "journal_integrity_failure", "message": str(error)}) from error
 
 
 @app.get("/v1/journal/{season}/export")
@@ -389,6 +394,25 @@ def _meta(snapshot: dict) -> ApiMeta:
         stale=stale, freshness_hours=freshness_hours,
         snapshot_gameweek=int(snapshot.get("gw")) if snapshot.get("gw") is not None else None,
         quality_status=quality_status, quality_issues=quality_issues,
+    )
+
+
+def _bootstrap_meta(bootstrap: dict, source: str = "official-fpl-cache") -> ApiMeta:
+    raw = bootstrap.get("_meta") if isinstance(bootstrap.get("_meta"), dict) else {}
+    snapshot_at = None
+    if raw.get("fetched_at"):
+        try:
+            snapshot_at = datetime.fromisoformat(str(raw["fetched_at"]).replace("Z", "+00:00"))
+        except ValueError:
+            snapshot_at = None
+    freshness = None if snapshot_at is None else round(
+        (datetime.now(timezone.utc) - snapshot_at).total_seconds() / 3600, 2
+    )
+    issues = [] if snapshot_at is not None and raw.get("content_sha256") else ["bootstrap_provenance_missing"]
+    return ApiMeta(
+        source=source, snapshot_at=snapshot_at, freshness_hours=freshness,
+        stale=freshness is None or freshness > 24,
+        quality_status="valid" if not issues else "unknown", quality_issues=issues,
     )
 
 

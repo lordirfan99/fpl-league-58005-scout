@@ -5,6 +5,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from .journal import verify_record_hash
+
 try:
     from google.cloud import storage
 except ImportError:  # pragma: no cover - local development without GCS extras
@@ -12,6 +14,10 @@ except ImportError:  # pragma: no cover - local development without GCS extras
 
 
 class SnapshotNotFoundError(FileNotFoundError):
+    pass
+
+
+class ArtifactIntegrityError(RuntimeError):
     pass
 
 
@@ -79,10 +85,19 @@ class SnapshotRepository:
         return {str(gw): self.fixtures(gw) for gw in range(from_gameweek, to_gameweek + 1)}
 
     def journal_index(self, season: str) -> dict[str, Any]:
-        return self.read(f"journal/{season}/index.json")
+        payload = self.read(f"journal/{season}/index.json")
+        for row in payload.get("gameweeks", []):
+            gameweek = int(row.get("gameweek") or 0)
+            entry = self.journal_gameweek(season, gameweek)
+            if row.get("record_hash") != entry.get("record_hash"):
+                raise ArtifactIntegrityError(f"Journal index hash mismatch for {season} GW{gameweek}")
+        return payload
 
     def journal_gameweek(self, season: str, gameweek: int) -> dict[str, Any]:
-        return self.read(f"journal/{season}/gw{gameweek:02d}.json")
+        payload = self.read(f"journal/{season}/gw{gameweek:02d}.json")
+        if not verify_record_hash(payload):
+            raise ArtifactIntegrityError(f"Journal {season} GW{gameweek} failed hash verification")
+        return payload
 
     def journal_export_path(self, season: str, filename: str) -> Path:
         return self._path(f"journal/{season}/exports/{filename}")

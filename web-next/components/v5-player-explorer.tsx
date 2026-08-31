@@ -25,7 +25,7 @@ export function V5PlayerExplorer({ players }: { players: V5Player[] }) {
       {visible.map((player, index) => <article className="v5-player" key={player.element}>
         <header><span className="v5-rank">{String(index + 1).padStart(2, "0")}</span><div><strong>{player.name}</strong><small>{player.team} · {player.position}</small></div><b>{player.xpts_mean.toFixed(1)}<small>xPts</small></b></header>
         <div className="v5-range"><span style={{ left: `${Math.min(90, Math.max(4, player.p10 * 5))}%` }} /><i /><span style={{ left: `${Math.min(96, player.p90 * 5)}%` }} /><b style={{ left: `${Math.min(94, player.p50 * 5)}%` }} /></div>
-        <div className="v5-stats"><span><b>{player.p10.toFixed(1)}</b>P10</span><span><b>{player.p50.toFixed(1)}</b>Median</span><span><b>{player.p90.toFixed(1)}</b>P90</span><span><b>{player.expected_minutes.expected_minutes.toFixed(0)}</b>Minutes</span></div>
+        <div className="v5-stats"><span><b>{player.p10.toFixed(1)}</b>Low range</span><span><b>{player.p50.toFixed(1)}</b>Estimate</span><span><b>{player.p90.toFixed(1)}</b>High range</span><span><b>{player.expected_minutes.expected_minutes.toFixed(0)}</b>Minutes</span></div>
         <footer><span>{Math.round(player.p_return * 100)}% return</span><span>{Math.round(player.p_10_plus * 100)}% haul</span>{player.quality_issues.length ? <em>Data caveat</em> : <em className="ready">Ready</em>}</footer>
       </article>)}
     </div>

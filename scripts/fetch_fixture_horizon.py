@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.request import Request, urlopen
@@ -23,6 +24,15 @@ def get_json(path: str):
 def main() -> None:
     bootstrap = get_json("bootstrap-static/")
     fixtures = get_json("fixtures/")
+    fetched_at = datetime.now(timezone.utc).isoformat()
+    bootstrap_hash = hashlib.sha256(
+        json.dumps(bootstrap, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    bootstrap["_meta"] = {
+        "fetched_at": fetched_at,
+        "source": "official-fpl-api/bootstrap-static",
+        "content_sha256": bootstrap_hash,
+    }
     teams = {team["id"]: team["name"] for team in bootstrap["teams"]}
     gameweeks: dict[str, list[dict]] = {str(gw): [] for gw in range(1, 39)}
 
@@ -42,14 +52,17 @@ def main() -> None:
         )
 
     payload = {
-        "fetched_at": datetime.now(timezone.utc).isoformat(),
+        "fetched_at": fetched_at,
         "source": "official-fpl-api",
         "gameweeks": gameweeks,
     }
     target = DATA_DIR / "fixtures_cache.json"
     target.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    (DATA_DIR / "bootstrap_cache.json").write_text(
+        json.dumps(bootstrap, separators=(",", ":"), ensure_ascii=False), encoding="utf-8"
+    )
     populated = sum(bool(items) for items in gameweeks.values())
-    print(f"Saved {len(fixtures)} fixtures across {populated} gameweeks to {target}")
+    print(f"Saved {len(fixtures)} fixtures across {populated} gameweeks and refreshed bootstrap provenance")
 
 
 if __name__ == "__main__":

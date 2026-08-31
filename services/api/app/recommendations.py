@@ -236,9 +236,16 @@ def build_recommendations(
         if current is None or pick["score"] < current["score"]:
             weakest[pick["position"]] = pick
     transfers = []
+    bank = _number(manager.get("gw_bank")) / 10.0
+    club_counts = Counter(pick.get("team") for pick in squad)
     for incoming in missing:
         outgoing = weakest.get(incoming["position"])
         if not outgoing:
+            continue
+        affordable = incoming["cost"] <= outgoing["cost"] + bank + 1e-9
+        resulting_club_count = club_counts[incoming["team"]] + (0 if incoming["team"] == outgoing["team"] else 1)
+        club_limit_ok = resulting_club_count <= 3
+        if not (affordable and club_limit_ok):
             continue
         signal_gain = incoming["score"] - outgoing["score"]
         if signal_gain > 5:
@@ -247,6 +254,9 @@ def build_recommendations(
                 "xpts_gain": round(incoming["xpts"] - outgoing["xpts"], 2),
                 "signal_gain": round(signal_gain, 2),
                 "gain_basis": "next_gameweek_gross; transfer cost and hits excluded",
+                "net_ev_status": "not_calculated",
+                "legal_checks": {"same_position": True, "affordable_at_snapshot_prices": True,
+                                 "club_limit": True, "bank": round(bank, 1)},
             })
     transfers.sort(key=lambda item: item["signal_gain"], reverse=True)
 

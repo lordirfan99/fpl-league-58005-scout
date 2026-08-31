@@ -43,4 +43,9 @@ class PlayerProjection:
         result = asdict(self)
         result["expected_minutes"] = self.expected_minutes.to_dict()
         result["quality_issues"] = list(self.quality_issues)
+        result["uncertainty"] = {
+            "status": "heuristic_not_calibrated",
+            "method": "deterministic_range_around_mean",
+            "labels": {"p10": "low_range", "p50": "central_estimate", "p90": "high_range"},
+        }
         return result

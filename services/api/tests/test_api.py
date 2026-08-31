@@ -66,6 +66,12 @@ def test_elite_and_recommendation_contracts() -> None:
     }
     assert payload["competitive"]["execution_authority"] == "telegram"
     assert payload["meta"]["quality_status"] == "valid"
+    for transfer in payload["transfers"]:
+        assert transfer["incoming"]["position"] == transfer["outgoing"]["position"]
+        assert transfer["incoming"]["cost"] <= transfer["outgoing"]["cost"] + transfer["legal_checks"]["bank"]
+        assert transfer["legal_checks"]["club_limit"] is True
+        assert transfer["net_ev_status"] == "not_calculated"
+        assert "gross" in transfer["gain_basis"]
 
     # V4 must apply the published weights, not merely return them as metadata.
     candidate = next(player for player in payload["captains"] if not player["risk"])
@@ -162,6 +168,8 @@ def test_catalog_exposes_official_fpl_entities() -> None:
     assert response.status_code == 200
     assert response.json()["players"]
     assert response.json()["teams"]
+    assert response.json()["meta"]["snapshot_at"]
+    assert response.json()["meta"]["quality_status"] == "valid"
 
 
 def test_live_team_endpoint_is_separate_from_snapshots(monkeypatch) -> None:

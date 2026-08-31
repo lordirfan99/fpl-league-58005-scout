@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "algorithm": "sha256",
+  "artifacts": {
+    "data/gw1_league58005_data.json": "eb43a9d5cd429af2abd6ee9dec2bfca1242f1578e9f3da18ed4557a12f801021",
+    "data/gw1_league58005_compact.json": "ec542273159b1fc5db8cde282de9c4b0bd7ea5aa91c099e6f1ddf1f3e50aadb1",
+    "data/gw1_league131997_data.json": "40ce6d94f954ceb732d223ad182ee0342237bb31268d55b7dd3a6ccdb32eac27",
+    "data/gw1_league131997_compact.json": "eab50a08474023b65040c62956b68e11aed94b7b15e511223b6d11df012cc3b1",
+    "data/journal/2026-27/gw01.json": "9d0f40766db89e94c2bd577111fb6005958f54acbf432005ee11ee339b9d39a0"
+  },
+  "corrections": []
+}

@@ -4,6 +4,8 @@ __pycache__/
 web-next/.next/
 web-next/node_modules/
 web-next/*.tsbuildinfo
+web-next/test-results/
+web-next/playwright-report/
 services/api/.venv/
 services/api/.pytest_cache/
 services/api/**/__pycache__/

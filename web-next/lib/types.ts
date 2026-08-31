@@ -67,4 +67,6 @@ export interface DashboardData {
   gameweek: number;
   leagueId: number;
   fetchedAt?: string;
+  requestedGameweek?: number;
+  snapshotStatus?: "exact" | "fallback_missing" | "fallback_provisional";
 }
