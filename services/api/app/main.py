@@ -607,10 +607,10 @@ def league_live(league_id: int) -> dict:
                 break
         except SnapshotNotFoundError:
             continue
-    managers = []
+    live_managers = []
     for row in live["managers"]:
         old = previous.get(str(row.get("entry")), {})
-        managers.append({
+        live_managers.append({
             **old,
             "entry_id": int(row.get("entry") or 0),
             "entry_name": row.get("entry_name") or old.get("entry_name", ""),
@@ -624,7 +624,14 @@ def league_live(league_id: int) -> dict:
             "captain": old.get("captain", ""),
             "transfers_made": int(old.get("transfers_made") or 0),
         })
-    return {"meta": {"source": "official-fpl-live", "snapshot_gameweek": current, "quality_status": "unknown", "generated_at": live["fetched_at"]}, "league_id": league_id, "gameweek": current, "count": len(managers), "declared_count": len(managers), "hydration_percent": 100.0, "managers": managers, "provisional": True}
+    live_by_id = {row["entry_id"]: row for row in live_managers}
+    # Preserve the full league shape for navigation while clearly marking
+    # rows outside the live top cohort as historical until the next snapshot.
+    managers = [live_by_id.get(int(row.get("entry_id") or 0), row) for row in previous.values()]
+    managers.extend(row for key, row in live_by_id.items() if key not in {int(x.get("entry_id") or 0) for x in previous.values()})
+    if not managers:
+        managers = live_managers
+    return {"meta": {"source": "official-fpl-live", "snapshot_gameweek": current, "quality_status": "partial", "generated_at": live["fetched_at"]}, "league_id": league_id, "gameweek": current, "count": len(managers), "declared_count": len(managers), "hydration_percent": round(len(live_managers) / max(1, len(managers)) * 100, 1), "managers": managers, "provisional": True}
 
 
 @app.get("/v1/catalog/compact")

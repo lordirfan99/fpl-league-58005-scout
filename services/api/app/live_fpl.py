@@ -117,7 +117,9 @@ def league_standings(league_id: int) -> dict[str, Any]:
         if not payload.get("standings", {}).get("has_next") or not batch:
             break
         page += 1
-        if page > 100:
+        # The dashboard's live cohort only needs the top 200 managers. Full
+        # league history remains available from finalized snapshots.
+        if page >= 4:
             break
     return {
         "source": "official-fpl-live",
