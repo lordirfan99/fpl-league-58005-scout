@@ -35,7 +35,9 @@ gates and explicit owner approval before the runtime registry can activate it.
 | Maximum snapshot age | 12 hours; older or unknown data is stale |
 | Real FPL execution authority | Telegram approval flow only |
 | Dashboard writes | Disabled |
-| Last manual documentation verification | 2026-08-26 UTC |
+| Last manual documentation verification | 2026-09-01 UTC (`017dd0c` frontend / `ea65bfa` API) |
+
+For exact deployed revisions, per-tab data semantics, verification counts and accepted limitations, see [`docs/CURRENT_STATUS.md`](docs/CURRENT_STATUS.md).
 
 ## V5 player-intelligence laboratory
 
@@ -463,8 +465,10 @@ The correct question is whether the model improves decision quality across a mea
 | Trigger | Automation | Result |
 |---|---|---|
 | Every 2 hours on VM | `fpl-auto-runner.timer` | Live plan, Shadow V3 snapshot, post-GW review and promotion evaluation |
-| Every 4 hours on GitHub | `refresh-gameweek.yml` | Detect finished/data-checked GW, collect both leagues, validate and commit snapshots |
-| Daily on GitHub | `refresh-fixtures.yml` | Refresh forward official fixtures |
+| Hourly at `:23` on GitHub | `refresh-gameweek.yml` | Detect finished/data-checked GW, collect both leagues, validate and commit snapshots |
+| Hourly at `:17` on GitHub | `refresh-fixtures.yml` | Validate and publish the current official player/team/event/fixture caches to GCS |
+| Hourly at `:17` on GitHub | `capture-journal.yml` | Freeze pre-deadline evidence only when the configured capture window is open |
+| Every 30 minutes on GitHub | `monitor-production.yml` | Check readiness, contracts, payload budgets and bounded API/dashboard latency |
 | Push affecting `web-next` | Netlify Git integration | Build/deploy production frontend |
 | Push affecting API/snapshots | `deploy-api.yml` | Build and deploy Cloud Run read API |
 | Every 5 minutes on VM | `fpl-dashboard-bridge-sync.timer` | Pull reviewed bridge code, compile, install, health-check and rollback on failure |

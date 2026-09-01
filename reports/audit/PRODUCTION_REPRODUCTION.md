@@ -53,4 +53,7 @@ The deployed hardening revision was rechecked after the initial baseline:
 - Live V5 rows expose `heuristic_not_calibrated` and range labels; the production endpoint retains 626 current players because the GCS catalogue was newer in roster membership but lacked provenance.
 - That GCS/local selection issue was reproduced and fixed so reference caches select the newest timestamped, proven source; a regression test covers proven-local versus newer-proven-remote selection.
 - The real Netlify suite first passed 16 flows with one intentional desktop skip and exposed the injected badge/early-hydration mobile issue. After the permanent fix, the final deployed mobile rerun passed; all 17 applicable production flows therefore have passing evidence.
+- On 1 September 2026, the post-fix audit revisited all 17 dashboard routes at desktop and 393 px widths. Every route rendered a real H1, none entered the global error view, and none created page-level horizontal overflow. A clean production tab recorded no console errors.
+- The deployed My Team view showed official live numeric values (`91` GW points, `132` total points and league rank `#874` at observation time) with a current FPL fetch timestamp. These values are mutable observations, not frozen documentation fixtures.
+- The deployed public-league Transfers view preserved league evidence, displayed the personalized-optimizer explanation, translated `bboost` to `Bench Boost`, and hid the Netlify badge on the phone viewport.
 
