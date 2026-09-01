@@ -4,6 +4,7 @@ import { Pitch } from "@/components/pitch";
 import { getCompetitiveRecommendation } from "@/lib/competitive";
 import { getDashboardData } from "@/lib/data";
 import { getLiveTeam } from "@/lib/live";
+import { deriveSeasonContext } from "@/lib/season";
 import type { Pick } from "@/lib/types";
 
 const positionFromElementType = (elementType?: number): Pick["position"] => elementType === 1 ? "GKP" : elementType === 2 ? "DEF" : elementType === 3 ? "MID" : "FWD";
@@ -13,15 +14,15 @@ export default async function MyTeamPage() {
   const rec = await getCompetitiveRecommendation(data.leagueId, data.gameweek).catch(() => null);
   const { manager } = data;
 
-  const upcoming = data.bootstrap.events.find((event) => !event.finished);
-  const targetGameweek = upcoming?.id ?? data.gameweek + 1;
+  const season = deriveSeasonContext(data.bootstrap.events, { finalizedGw: data.gameweek, liveGameweek: live?.gameweek });
+  const targetGameweek = season.nextDeadlineGw;
   const liveGameweek = live?.gameweek;
   const liveTeam = liveGameweek != null && liveGameweek >= data.gameweek && live?.picks?.length === 15;
   const displayGameweek = liveTeam ? liveGameweek : data.gameweek;
   const livePlayers = live?.picks?.length === 15 ? live.picks.map((pick) => ({ element: pick.element, name: pick.web_name, position: positionFromElementType(data.bootstrap.elements.find((player) => player.id === pick.element)?.element_type), team: data.bootstrap.teams.find((team) => team.id === pick.team)?.name ?? "—", cost: pick.now_cost / 10, multiplier: pick.multiplier, is_captain: pick.is_captain, is_vice_captain: pick.is_vice_captain })) : [];
   const squad: Pick[] = liveTeam ? livePlayers : manager.squad;
   const historical = !liveTeam && targetGameweek !== data.gameweek;
-  const deadline = upcoming?.deadline_time ? new Date(upcoming.deadline_time) : null;
+  const deadline = season.nextDeadline ? new Date(season.nextDeadline) : null;
   const livePoints = live?.points;
   const liveTotal = live?.entry.total_points;
   const liveOverallRank = live?.entry.overall_rank;

@@ -72,7 +72,7 @@ export interface BootstrapPlayer {
 }
 
 export interface BootstrapTeam { id: number; name: string; short_name: string; code: number }
-export interface BootstrapEvent { id: number; name: string; is_current: boolean; deadline_time: string; finished: boolean }
+export interface BootstrapEvent { id: number; name: string; is_current: boolean; is_next?: boolean; data_checked?: boolean; deadline_time: string; finished: boolean }
 export interface Bootstrap { elements: BootstrapPlayer[]; teams: BootstrapTeam[]; events: BootstrapEvent[] }
 export interface Fixture { event?: number; team_h: string; team_a: string; team_h_difficulty: number; team_a_difficulty: number; kickoff_time?: string | null }
 export type FixtureHorizon = Record<string, Fixture[]>;

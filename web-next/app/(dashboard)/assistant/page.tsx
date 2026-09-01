@@ -3,6 +3,7 @@ import { MetricCard } from "@/components/metric-card";
 import { PageHeader } from "@/components/page-header";
 import { getCompetitiveRecommendation } from "@/lib/competitive";
 import { getDashboardData } from "@/lib/data";
+import { deriveSeasonContext } from "@/lib/season";
 
 const number = (value?: number) => typeof value === "number" ? value.toFixed(1) : "—";
 
@@ -10,10 +11,10 @@ export default async function AssistantPage() {
   const review = await getDashboardData().catch(() => null);
   const rec = review ? await getCompetitiveRecommendation(review.leagueId, review.gameweek).catch(() => null) : null;
 
-  const upcoming = review?.bootstrap.events.find((event) => !event.finished);
-  const targetGameweek = upcoming?.id ?? (review ? review.gameweek + 1 : undefined);
-  const deadline = upcoming?.deadline_time ? new Date(upcoming.deadline_time) : null;
-  const hoursRemaining = deadline ? Math.max(0, (deadline.getTime() - Date.now()) / 3_600_000) : null;
+  const season = review ? deriveSeasonContext(review.bootstrap.events, { finalizedGw: review.gameweek }) : null;
+  const targetGameweek = season?.nextDeadlineGw;
+  const deadline = season?.nextDeadline ? new Date(season.nextDeadline) : null;
+  const hoursRemaining = season?.hoursToDeadline ?? null;
 
   const move = rec?.transfers?.[0];
   const captain = rec?.captains?.[0];
