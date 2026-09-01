@@ -6,7 +6,7 @@
 
 **Dashboard revision:** `1cc801fe6e5644c2b51fdeba901c1a5579a3690b`
 
-**API revision:** `7c352cee17e9e8e26c17624b0bc393b74abdf125`
+**API revision:** `bf1da1a56347ada0cafa44ff80d4ea6b1f4dec15`
 
 ## Production services
 
@@ -50,7 +50,7 @@ GitHub schedules can start a few minutes late under platform load. The refresh l
 
 ## Verification evidence
 
-- API tests before the hourly-source guard: **57 passed**; official-source guard tests add one valid and five rejection cases.
+- API tests: **63 passed**, including one valid official-source case and five rejection cases for incomplete/placeholder-like payloads.
 - Next.js typecheck, production build and dependency audit: **passed**.
 - Browser checks: **19 applicable passed, 1 intentional desktop skip** on both local production build and live Netlify.
 - Automated accessibility: no serious/critical WCAG 2 A/AA violations on tested critical pages.
