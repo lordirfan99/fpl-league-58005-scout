@@ -216,14 +216,16 @@ def test_live_team_calculates_current_score_and_league_rank_from_official_payloa
             "summary_overall_rank": 1234, "summary_overall_points": 88,
             "leagues": {"classic": [{"id": 58005, "name": "Test League", "entry_rank": 12, "entry_last_rank": 20, "rank_count": 100}]},
         },
-        "entry/99/event/2/picks/": {"picks": [{"element": 10, "position": 1, "multiplier": 2, "is_captain": True, "is_vice_captain": False}]},
-        "entry/99/history/": {"current": []},
+            "entry/99/event/2/picks/": {"picks": [{"element": 10, "position": 1, "multiplier": 2, "is_captain": True, "is_vice_captain": False}]},
+            "entry/99/history/": {"current": []},
+            "fixtures/?event=2": [{"team_h": 1, "team_a": 2, "started": False, "finished": False, "kickoff_time": "2026-09-02T12:00:00Z"}],
     }
     monkeypatch.setattr(main.live_fpl, "_get", lambda path, ttl=30: payloads[path])
     result = main.live_fpl.team(99, 2, 58005)
     assert result["points"] == 14
     assert result["points_source"] == "official-live-picks"
     assert result["league"]["entry_rank"] == 12
+    assert result["fixtures"] == [{"team_h": 1, "team_a": 2, "started": False, "finished": False, "kickoff_time": "2026-09-02T12:00:00Z"}]
 
 
 def test_fixture_horizon_is_populated() -> None:

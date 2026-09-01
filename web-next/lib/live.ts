@@ -11,6 +11,7 @@ export type LiveTeam = {
   entry: { id: number; entry_name: string; player_name: string; overall_rank: number; total_points: number; value: number; bank: number; transfers_made: number; transfers_cost: number };
   league: { id: number; name: string; entry_rank: number; entry_last_rank: number; rank_count: number } | null;
   picks: Array<{ element: number; position: number; multiplier: number; is_captain: boolean; is_vice_captain: boolean; web_name: string; team: number; points: number; now_cost: number }>;
+  fixtures: Array<{ team_h: number; team_a: number; started: boolean; finished: boolean; kickoff_time: string | null }>;
   points: number;
   points_source: "history" | "official-live-picks";
 };

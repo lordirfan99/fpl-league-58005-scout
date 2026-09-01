@@ -46,6 +46,7 @@ def team(entry_id: int, gameweek: int, league_id: int | None = None) -> dict[str
     entry = _get(f"entry/{entry_id}/", ttl=30)
     picks_payload = _get(f"entry/{entry_id}/event/{gameweek}/picks/", ttl=15)
     history = _get(f"entry/{entry_id}/history/", ttl=30)
+    fixtures = _get(f"fixtures/?event={gameweek}", ttl=30)
     history_row = next((row for row in history.get("current", []) if int(row.get("event") or 0) == gameweek), {})
     picks: list[dict[str, Any]] = []
     for pick in picks_payload.get("picks", []):
@@ -96,6 +97,16 @@ def team(entry_id: int, gameweek: int, league_id: int | None = None) -> dict[str
         "points": int(live_points),
         "points_source": "history" if history_row.get("event_total") is not None else "official-live-picks",
         "provisional": not bool((next((e for e in bootstrap.get("events", []) if int(e.get("id") or 0) == gameweek), {}) or {}).get("finished")),
+        # These are the official fixtures for this GW.  The frontend uses
+        # them to show each player's points once a match starts, or their
+        # upcoming opponent before kick-off.
+        "fixtures": [{
+            "team_h": int(fixture.get("team_h") or 0),
+            "team_a": int(fixture.get("team_a") or 0),
+            "started": bool(fixture.get("started")),
+            "finished": bool(fixture.get("finished")),
+            "kickoff_time": fixture.get("kickoff_time"),
+        } for fixture in fixtures],
     }
 
 
