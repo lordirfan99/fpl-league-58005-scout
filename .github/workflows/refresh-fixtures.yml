@@ -37,3 +37,13 @@ jobs:
         run: |
           gcloud storage cat "gs://${{ vars.FPL_JOURNAL_BUCKET }}/snapshots/bootstrap_cache.json" | python -c "import json,sys; p=json.load(sys.stdin); assert p['_meta']['source']=='official-fpl-api/bootstrap-static'; assert len(p['elements']) >= 400; print(p['_meta'])"
           gcloud storage cat "gs://${{ vars.FPL_JOURNAL_BUCKET }}/snapshots/fixtures_cache.json" | python -c "import json,sys; p=json.load(sys.stdin); assert p['source']=='official-fpl-api'; assert p['fixture_count'] >= 300; assert len(p['content_sha256'])==64; print({'fetched_at':p['fetched_at'],'fixtures':p['fixture_count'],'sha256':p['content_sha256']})"
+      - name: Alert on failure
+        if: failure()
+        uses: ./.github/actions/notify
+        with:
+          message: >-
+            🔴 refresh-fixtures failed on ${{ github.repository }}@${{ github.ref_name }};
+            the official catalog / fixtures cache may be going stale.
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          bot-token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          chat-id: ${{ secrets.TELEGRAM_ALERT_CHAT_ID }}

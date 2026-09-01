@@ -140,10 +140,19 @@ async def publish_snapshot(
 
 @app.get("/v1/me")
 def me() -> dict[str, int]:
+    finalized = _current_gameweek()
+    live = _live_gameweek()
     return {
         "team_id": settings.my_team_id,
         "default_league_id": settings.default_league_id,
-        "current_gameweek": _current_gameweek(),
+        # Unchanged contract: the newest gameweek with a fully validated,
+        # finalized league snapshot the API can serve.
+        "current_gameweek": finalized,
+        "latest_finalized_gameweek": finalized,
+        # The official in-progress/next gameweek, independent of snapshot
+        # finalization. Lets clients and monitoring see the finalization gap.
+        "live_gameweek": live,
+        "snapshot_lag_gameweeks": max(0, live - finalized),
     }
 
 
@@ -815,6 +824,23 @@ def decision_current(
         "writes_enabled": False,
         "disclaimer": "Decision packet is read-only; Telegram performs final live validation and execution.",
     }
+
+
+def _live_gameweek() -> int:
+    """The official in-progress (or most recent) gameweek from the catalog.
+
+    Unlike ``_current_gameweek`` this never waits for a finalized league
+    snapshot, so it stays correct through the post-deadline finalization gap.
+    """
+    events = repository.bootstrap().get("events", [])
+    current = next((event for event in events if event.get("is_current")), None)
+    if current:
+        return int(current["id"])
+    next_event = next((event for event in events if event.get("is_next")), None)
+    if next_event:
+        return max(1, int(next_event["id"]) - 1)
+    finished = [int(event["id"]) for event in events if event.get("finished")]
+    return max(finished, default=1)
 
 
 def _current_gameweek() -> int:

@@ -1,0 +1,45 @@
+name: Notify
+description: >-
+  Send a short Telegram alert when a data workflow fails. No-ops (and never
+  fails the job) when TELEGRAM_BOT_TOKEN / TELEGRAM_ALERT_CHAT_ID are not set.
+
+inputs:
+  message:
+    description: Alert text to deliver.
+    required: true
+  bot-token:
+    description: Telegram bot token (pass secrets.TELEGRAM_BOT_TOKEN).
+    required: false
+    default: ""
+  chat-id:
+    description: Telegram chat id (pass secrets.TELEGRAM_ALERT_CHAT_ID).
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        BOT_TOKEN: ${{ inputs.bot-token }}
+        CHAT_ID: ${{ inputs.chat-id }}
+        MESSAGE: ${{ inputs.message }}
+      run: |
+        set -u
+        if [ -z "${BOT_TOKEN}" ] || [ -z "${CHAT_ID}" ]; then
+          echo "::notice::Telegram alerting is not configured (TELEGRAM_BOT_TOKEN / TELEGRAM_ALERT_CHAT_ID unset); skipping."
+          exit 0
+        fi
+        code=$(curl -sS -o /tmp/notify.out -w '%{http_code}' \
+          --max-time 20 \
+          --data-urlencode "chat_id=${CHAT_ID}" \
+          --data-urlencode "text=${MESSAGE}" \
+          --data-urlencode "disable_web_page_preview=true" \
+          "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" || echo "000")
+        echo "Telegram sendMessage HTTP ${code}"
+        if [ "${code}" != "200" ]; then
+          cat /tmp/notify.out || true
+          echo "::warning::Telegram alert could not be delivered (HTTP ${code}); check the workflow run manually."
+        fi
+        # Never fail the job just because the alert channel is unavailable.
+        exit 0
