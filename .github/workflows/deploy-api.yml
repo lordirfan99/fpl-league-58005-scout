@@ -51,6 +51,8 @@ jobs:
           assert payload["status"] == "ok", payload
           assert payload["competitive_model"] == "competitive-v4.0", payload
           assert payload["dashboard_writes_enabled"] is False, payload
+          assert payload["writes_enabled"] is False, payload
+          assert payload["execution_authority"] == "manual_fpl", payload
           assert payload["revision"] == "${{ github.sha }}", payload
           with urllib.request.urlopen(base + "/ready", timeout=60) as response:
               readiness = json.load(response)
@@ -66,9 +68,12 @@ jobs:
               recommendation = json.load(response)
           assert recommendation["competitive"]["model_version"] == "competitive-v4.0", recommendation
           assert recommendation["meta"]["quality_status"] == "valid", recommendation["meta"]
-          with urllib.request.urlopen(base + "/v1/autopilot/control-centre", timeout=60) as response:
-              control = json.load(response)
-          assert control["writes_enabled"] is False
-          assert control["execution_authority"] == "telegram"
-          print("Cloud Run API and read-only bridge are healthy")
+          assert recommendation["competitive"]["writes_enabled"] is False, recommendation["competitive"]
+          with urllib.request.urlopen(base + f"/v1/decision/current?league_id=58005&gw={gw}", timeout=60) as response:
+              decision = json.load(response)
+          assert decision["writes_enabled"] is False, decision
+          assert decision["executable"] is False, decision
+          assert decision["execution_authority"] == "manual_fpl", decision
+          assert decision["plan"] is None, decision
+          print("Cloud Run read-only API is healthy")
           PY

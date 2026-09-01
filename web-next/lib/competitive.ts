@@ -52,7 +52,7 @@ export interface CompetitiveRecommendation {
     templateGate: { alignmentThreshold?: number; alignment?: number; differentialAllowed?: boolean; decision?: string };
     weights: { eliteConsensus: number; projection: number; currentSeasonEvidence: number };
     scoreDefinition: string;
-    executionAuthority: "telegram";
+    executionAuthority: "manual_fpl";
     writesEnabled: false;
   };
 }
@@ -110,7 +110,7 @@ export async function getCompetitiveRecommendation(leagueId: number, gameweek: n
         currentSeasonEvidence: number(weights.current_season_evidence),
       },
       scoreDefinition: text(competitive.score_definition) ?? "",
-      executionAuthority: "telegram", writesEnabled: false,
+      executionAuthority: "manual_fpl", writesEnabled: false,
     },
   };
 }

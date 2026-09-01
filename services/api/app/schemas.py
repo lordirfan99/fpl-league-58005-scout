@@ -146,11 +146,3 @@ class RecommendationResponse(BaseModel):
     missing_elite_players: list[dict[str, Any]]
     competitive: dict[str, Any]
     disclaimer: str
-
-
-class IntegrationStatus(BaseModel):
-    configured: bool
-    mode: Literal["disconnected", "read_only", "approval"]
-    bot_name: str | None
-    approvals_enabled: bool
-    missing: list[str]

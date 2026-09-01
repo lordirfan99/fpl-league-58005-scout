@@ -3,10 +3,14 @@ import AxeBuilder from "@axe-core/playwright";
 
 const routes = ["/my-team", "/assistant", "/planner", "/journal", "/settings"];
 const dashboardRoutes = [
-  "/my-team", "/assistant", "/autopilot", "/v5-lab", "/model-compare", "/journal", "/planner",
+  "/my-team", "/assistant", "/v5-lab", "/model-compare", "/journal", "/planner",
   "/league?league=58005", "/league?league=131997", "/elite?league=131997", "/compare?league=131997",
-  "/transfers?league=58005", "/transfers?league=131997", "/analytics?league=131997", "/players", "/settings", "/shadow-v3",
+  "/transfers?league=58005", "/transfers?league=131997", "/analytics?league=131997", "/players", "/settings",
 ];
+
+// The retired GCP Autopilot bridge and its Telegram execution channel now
+// redirect to the read-only Assistant.
+const retiredRoutes = ["/autopilot", "/shadow-v3"];
 
 for (const route of routes) {
   test(`${route} renders its primary navigation and content`, async ({ page }, testInfo) => {
@@ -33,6 +37,14 @@ test("every dashboard tab renders useful content without a route error", async (
     await expect(page.getByRole("main"), route).toBeVisible();
     await expect(page.getByRole("heading", { name: "We could not load this view." }), route).toHaveCount(0);
     await expect(page.locator("h1"), route).toBeVisible();
+  }
+});
+
+test("retired autopilot routes redirect to the read-only assistant", async ({ page }) => {
+  for (const route of retiredRoutes) {
+    await page.goto(route, { waitUntil: "domcontentloaded" });
+    await expect(page, route).toHaveURL(/\/assistant$/);
+    await expect(page.getByRole("heading", { name: "Your next deadline, made clear" }), route).toBeVisible();
   }
 });
 
