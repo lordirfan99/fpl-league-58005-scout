@@ -16,8 +16,9 @@ def test_health() -> None:
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
     assert response.json()["competitive_model"] == "competitive-v4.0"
-    assert response.json()["execution_authority"] == "telegram"
+    assert response.json()["execution_authority"] == "manual_fpl"
     assert response.json()["dashboard_writes_enabled"] is False
+    assert response.json()["writes_enabled"] is False
 
 
 def test_my_team_has_valid_squad() -> None:
@@ -83,7 +84,7 @@ def test_elite_and_recommendation_contracts() -> None:
     assert payload["competitive"]["template_gate"]["decision"] in {
         "CONVERGE_TO_TEMPLATE", "CONTROLLED_DIFFERENTIAL"
     }
-    assert payload["competitive"]["execution_authority"] == "telegram"
+    assert payload["competitive"]["execution_authority"] == "manual_fpl"
     assert payload["meta"]["quality_status"] == "valid"
     for transfer in payload["transfers"]:
         assert transfer["incoming"]["position"] == transfer["outgoing"]["position"]
@@ -115,61 +116,45 @@ def test_canonical_decision_packet_contract() -> None:
     assert len(payload["decision_id"]) == 64
     assert payload["model_version"] == "competitive-v4.0"
     assert payload["competitive"]["model_version"] == "competitive-v4.0"
-    assert payload["execution_authority"] == "telegram"
+    assert payload["execution_authority"] == "manual_fpl"
     assert payload["writes_enabled"] is False
+    assert payload["executable"] is False
+    assert payload["plan"] is None
+    assert payload["packet_status"] == "advisory"
 
 
-def test_bridge_plan_is_canonical_before_current_snapshot(monkeypatch) -> None:
-    plan = {
-        "gw": 2, "status": "pending", "model_version": "competitive-v4.0",
-        "plan_id": "plan-1", "input_fp": "input-1",
-        "generated_at": "2026-08-26T08:00:00+00:00",
-    }
+def test_decision_packet_is_local_only_safe_hold_without_snapshot(monkeypatch) -> None:
+    """With no finalized snapshot the packet is a plainly labelled safe hold.
 
-    class Bridge:
-        configured = True
-
-        @staticmethod
-        def control_centre():
-            return {"plan": plan}
-
-    monkeypatch.setattr(main, "autopilot", Bridge())
-    monkeypatch.setattr(
-        main, "recommendations",
-        lambda **_: (_ for _ in ()).throw(HTTPException(status_code=404)),
-    )
-    response = client.get("/v1/decision/current?league_id=58005&gw=2")
-    payload = response.json()
-    assert response.status_code == 200
-    assert payload["packet_status"] == "valid"
-    assert payload["executable"] is True
-    assert payload["meta"]["source"] == "autopilot_bridge"
-    assert payload["plan"] == plan
-
-
-def test_executed_bridge_plan_remains_visible_but_not_executable(monkeypatch) -> None:
-    plan = {
-        "gw": 2, "status": "executed", "model_version": "competitive-v4.0",
-        "plan_id": "plan-1", "input_fp": "input-1",
-    }
-
-    class Bridge:
-        configured = True
-
-        @staticmethod
-        def control_centre():
-            return {"plan": plan}
-
-    monkeypatch.setattr(main, "autopilot", Bridge())
+    There is no bridge fallback: the API can only ever return locally derived
+    read-only decision support.
+    """
     monkeypatch.setattr(
         main, "recommendations",
         lambda **_: (_ for _ in ()).throw(HTTPException(status_code=404)),
     )
     payload = client.get("/v1/decision/current?league_id=58005&gw=2").json()
-    assert payload["packet_status"] == "applied"
+    assert payload["packet_status"] == "safe_hold"
     assert payload["executable"] is False
-    assert payload["meta"]["quality_status"] == "valid"
-    assert payload["plan"] == plan
+    assert payload["plan"] is None
+    assert payload["execution_authority"] == "manual_fpl"
+    assert payload["writes_enabled"] is False
+    assert payload["meta"]["source"] == "snapshot"
+
+
+def test_api_has_no_autopilot_or_telegram_surface() -> None:
+    """No bridge/Telegram endpoint, setting or response field survives."""
+    from app.settings import settings as live_settings
+
+    for attribute in ("autopilot_base_url", "autopilot_token", "telegram_configured", "telegram_bot_name"):
+        assert not hasattr(live_settings, attribute), attribute
+    for path in ("/v1/autopilot/status", "/v1/autopilot/control-centre", "/v1/integration/status"):
+        assert client.get(path).status_code == 404, path
+    assert client.post("/internal/v1/snapshots/bootstrap_cache.json", content=b"{}").status_code == 404
+    for path in ("/health", "/v1/recommendations/current?league_id=58005&gw=1", "/v1/decision/current?league_id=58005&gw=1"):
+        body = client.get(path).text.lower()
+        assert "telegram" not in body, path
+        assert "autopilot" not in body, path
 
 
 def test_v4_calibration_and_chase_are_deterministic() -> None:
@@ -261,12 +246,6 @@ def test_fixture_horizon_is_populated() -> None:
 def test_missing_snapshot_is_404() -> None:
     response = client.get("/v1/leagues/58005?gw=38")
     assert response.status_code == 404
-
-
-def test_telegram_is_honestly_disconnected() -> None:
-    response = client.get("/v1/integration/status")
-    assert response.status_code == 200
-    assert response.json()["approvals_enabled"] is False
 
 
 # --- Regression: live/in-progress GW snapshots must not 500 ---

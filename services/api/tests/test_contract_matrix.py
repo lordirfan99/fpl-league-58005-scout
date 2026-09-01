@@ -61,7 +61,7 @@ def test_health_and_optimizer_are_read_only_and_revision_aware() -> None:
     assert health["readiness"]["ready"] is True
     optimizer = client.get("/v1/optimizer/transfers?league_id=58005&gw=1&horizon=2&max_transfers=1").json()
     assert optimizer["optimizer_version"] == "net-ev-multiweek-v1"
-    assert optimizer["execution_authority"] == "telegram"
+    assert optimizer["execution_authority"] == "manual_fpl"
     assert optimizer["writes_enabled"] is False
     assert optimizer["meta"]["model_version"] == "net-ev-multiweek-v1"
 

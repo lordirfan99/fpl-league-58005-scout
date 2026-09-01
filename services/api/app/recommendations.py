@@ -297,7 +297,7 @@ def build_recommendations(
         },
         "weights": weights,
         "score_definition": "weighted elite consensus + FPL projection/fixture + current form/PPG; 0-100",
-        "execution_authority": "telegram", "writes_enabled": False,
+        "execution_authority": "manual_fpl", "writes_enabled": False,
     }
     return {
         "elite_count": len(elite),

@@ -1,33 +1,88 @@
-import Link from "next/link";
-import { ArrowRight, Bot, Clock3, ShieldCheck } from "lucide-react";
+import { ArrowRight, Clock3, ListChecks, ShieldCheck } from "lucide-react";
 import { MetricCard } from "@/components/metric-card";
 import { PageHeader } from "@/components/page-header";
-import { getAutopilotData } from "@/lib/autopilot";
+import { getCompetitiveRecommendation } from "@/lib/competitive";
 import { getDashboardData } from "@/lib/data";
 
 const number = (value?: number) => typeof value === "number" ? value.toFixed(1) : "—";
 
 export default async function AssistantPage() {
-  const [autopilot, review] = await Promise.all([getAutopilotData(), getDashboardData().catch(() => null)]);
-  const plan = autopilot?.plan;
-  const decision = plan?.decision_summary;
-  const move = plan?.transfers?.[0];
-  const deadline = plan?.deadline ? new Date(plan.deadline) : null;
+  const review = await getDashboardData().catch(() => null);
+  const rec = review ? await getCompetitiveRecommendation(review.leagueId, review.gameweek).catch(() => null) : null;
+
+  const upcoming = review?.bootstrap.events.find((event) => !event.finished);
+  const targetGameweek = upcoming?.id ?? (review ? review.gameweek + 1 : undefined);
+  const deadline = upcoming?.deadline_time ? new Date(upcoming.deadline_time) : null;
   const hoursRemaining = deadline ? Math.max(0, (deadline.getTime() - Date.now()) / 3_600_000) : null;
-  const isLocked = plan?.status === "rejected";
-  const action = decision?.recommended_action ?? (move ? "TRANSFER" : "REVIEW");
-  const captain = plan?.captain?.name ?? decision?.captain_rankings?.find((item) => item.eligible)?.name;
-  const integrity = decision?.source_manifest?.status === "ready" ? "READY" : decision?.source_manifest?.status === "lineup_only_safe" ? "LINEUP SAFE" : "REVIEW";
+
+  const move = rec?.transfers?.[0];
+  const captain = rec?.captains?.[0];
+  const phase = rec?.competitive.phase;
+  const alignment = rec?.competitive.alignment;
+  const targetAlignment = rec?.competitive.targetAlignment;
+  const action = move ? "TRANSFER" : "LINEUP ONLY";
+  const quality = rec?.meta.qualityStatus ?? "unknown";
 
   return <div className="page-stack">
-    <PageHeader eyebrow={`DECISION ASSISTANT · TARGET GW${plan?.gw ?? "—"}`} title="Your next deadline, made clear" description="One current recommendation, clearly separated from historical team and league research." updated={plan?.generated_at ? new Date(plan.generated_at).toLocaleString("en-MY", { dateStyle: "medium", timeStyle: "short" }) : undefined} />
-    <section className="decision-hero"><div><span className="hero-kicker">NEXT DEADLINE · GW{plan?.gw ?? "—"} · {isLocked ? "READ-ONLY REVIEW" : "PLAN READY"}</span><h2>{move ? <>{move.out_name} <ArrowRight size={22} /> {move.in_name}</> : action === "LINEUP ONLY" ? "Set your lineup — no transfer" : action}</h2><p>{decision?.reason ?? "A fresh canonical recommendation is not available yet."} {isLocked ? " The dashboard will not submit changes; use this as a review before Telegram approval." : " Review the plan before approving it through Telegram."}</p><Link href="/autopilot">Open full decision evidence</Link></div><div className="hero-score"><span>{hoursRemaining == null ? "Deadline" : "Time left"}</span><strong>{hoursRemaining == null ? "—" : hoursRemaining < 24 ? `${Math.ceil(hoursRemaining)}h` : `${Math.floor(hoursRemaining / 24)}d`}</strong></div></section>
-    <section className="metric-grid"><MetricCard label="Action now" value={action === "LINEUP ONLY" ? "Set XI" : action} detail={move ? "Transfer candidate supplied" : "No transfer is proposed"} tone={isLocked ? "warning" : "positive"} /><MetricCard label="Target gameweek" value={`GW${plan?.gw ?? "—"}`} detail={deadline ? deadline.toLocaleString("en-MY", { dateStyle: "medium", timeStyle: "short" }) : "Deadline TBC"} /><MetricCard label="Data integrity" value={integrity} detail={isLocked ? "Valid plan, execution locked" : "Sources ready for review"} tone={isLocked ? "warning" : "positive"} /><MetricCard label="Historical review" value={review ? `GW${review.gameweek}` : "—"} detail={review && plan?.gw !== review.gameweek ? "Research is not used as a live action" : "Aligned with decision target"} /></section>
+    <PageHeader
+      eyebrow={`DECISION ASSISTANT · TARGET GW${targetGameweek ?? "—"}`}
+      title="Your next deadline, made clear"
+      description="One locally derived, read-only recommendation. Review it, then make every transfer, captain and lineup change yourself in the official FPL app."
+      updated={rec?.meta.snapshotAt ? new Date(rec.meta.snapshotAt).toLocaleString("en-MY", { dateStyle: "medium", timeStyle: "short" }) : undefined}
+    />
+
+    <section className="decision-hero">
+      <div>
+        <span className="hero-kicker">NEXT DEADLINE · GW{targetGameweek ?? "—"} · {phase ?? "REVIEW"}</span>
+        <h2>{move ? <>{move.outgoing.name} <ArrowRight size={22} /> {move.incoming.name}</> : "Set your lineup — no transfer"}</h2>
+        <p>{rec?.competitive.phaseReason ?? "A finalized league snapshot for the current gameweek is not available yet, so no competitor-aware recommendation can be built."} Review and apply any change manually in FPL.</p>
+      </div>
+      <div className="hero-score">
+        <span>{hoursRemaining == null ? "Deadline" : "Time left"}</span>
+        <strong>{hoursRemaining == null ? "—" : hoursRemaining < 24 ? `${Math.ceil(hoursRemaining)}h` : `${Math.floor(hoursRemaining / 24)}d`}</strong>
+      </div>
+    </section>
+
+    <section className="metric-grid">
+      <MetricCard label="Action now" value={move ? "Transfer" : "Set XI"} detail={move ? "Model-supported candidate below" : "No move clears the model threshold"} tone={move ? "positive" : "default"} />
+      <MetricCard label="Target gameweek" value={`GW${targetGameweek ?? "—"}`} detail={deadline ? deadline.toLocaleString("en-MY", { dateStyle: "medium", timeStyle: "short" }) : "Deadline TBC"} />
+      <MetricCard label="Elite alignment" value={alignment == null ? "—" : `${alignment.toFixed(0)}%`} detail={targetAlignment == null ? "Target pending" : `Target ${targetAlignment}%`} tone={alignment != null && targetAlignment != null && alignment >= targetAlignment ? "positive" : "warning"} />
+      <MetricCard label="Snapshot quality" value={quality === "valid" ? "Valid" : quality === "unknown" ? "Pending" : "Invalid"} detail={rec ? `Reviewed GW${review?.gameweek}` : "Awaiting snapshot"} tone={quality === "valid" ? "positive" : "warning"} />
+    </section>
+
     <div className="content-grid decision-grid">
-      <section className="surface"><div className="section-heading"><div><span>WHAT TO DO</span><h2>{action === "LINEUP ONLY" ? "Lineup action" : "Transfer action"}</h2></div><span className="section-chip">GW{plan?.gw ?? "—"}</span></div>{move ? <article className="action-row"><span className="action-state do">MOVE</span><div><strong>{move.out_name} <ArrowRight size={14} /> {move.in_name}</strong><small>{move.hit ? "Includes a points hit" : "Uses a free transfer"}</small><p>{number(move.gain_gw1)} projected next-GW gain · {number(move.gain)} three-GW gain</p></div><b>Review<small>before approval</small></b></article> : <div className="empty-state"><ShieldCheck /><h3>Keep your transfer</h3><p>No move clears the bot’s current threshold. Focus on the XI and captain.</p></div>}</section>
-      <section className="surface"><div className="section-heading"><div><span>LINEUP CHECK</span><h2>Captain and formation</h2></div><span className="section-chip">Model recommendation</span></div><div className="captain-list"><article className="captain-row recommended"><span>C</span><div><strong>{captain ?? "Captain pending"}</strong><small>{decision?.formation?.selected ?? "Formation pending"} · GW{plan?.gw ?? "—"}</small></div><b>{number(plan?.captain?.xpts)}<small>xPts</small></b><em>{decision?.approval_scope ?? "Confirm final team news before approval"}</em></article></div></section>
+      <section className="surface">
+        <div className="section-heading"><div><span>WHAT TO DO</span><h2>{move ? "Transfer candidate" : "Lineup action"}</h2></div><span className="section-chip">GW{targetGameweek ?? "—"}</span></div>
+        {move ? <article className="action-row">
+          <span className="action-state do">MOVE</span>
+          <div>
+            <strong>{move.outgoing.name} <ArrowRight size={14} /> {move.incoming.name}</strong>
+            <small>{move.incoming.position} · {move.incoming.team} · {move.incoming.fixture}</small>
+            <p>{number(move.xptsGain)} gross next-GW xPts · {move.incoming.eliteOwnership.toFixed(1)}% elite ownership · hits excluded</p>
+          </div>
+          <b>Apply in FPL<small>after team news</small></b>
+        </article> : <div className="empty-state"><ShieldCheck /><h3>Keep your transfer</h3><p>No move clears the model threshold on the latest finalized snapshot. Focus on the XI and captain.</p></div>}
+      </section>
+      <section className="surface">
+        <div className="section-heading"><div><span>LINEUP CHECK</span><h2>Captain and formation</h2></div><span className="section-chip">Model recommendation</span></div>
+        <div className="captain-list"><article className="captain-row recommended">
+          <span>C</span>
+          <div><strong>{captain?.name ?? "Captain pending"}</strong><small>{rec?.competitive.templateFormation ?? "Formation pending"} · GW{targetGameweek ?? "—"}</small></div>
+          <b>{number(captain?.score)}<small>score</small></b>
+          <em>Confirm final team news before you set your captain</em>
+        </article></div>
+      </section>
     </div>
-    <section className="surface"><div className="section-heading"><div><span>WHY YOU CAN TRUST THIS</span><h2>Decision readiness</h2><p>Each status answers a different question, so “valid” is never confused with “fresh”.</p></div></div><div className="validation-grid"><div className={decision?.source_manifest?.official_fpl?.status === "ready" ? "passed" : "failed"}><ShieldCheck /><span>Integrity: official FPL {decision?.source_manifest?.official_fpl?.status ?? "unknown"}</span></div><div className={deadline && hoursRemaining != null && hoursRemaining > 0 ? "passed" : "failed"}><Clock3 /><span>Deadline: {deadline ? deadline.toLocaleString("en-MY", { dateStyle: "medium", timeStyle: "short" }) : "unknown"}</span></div><div className={isLocked ? "failed" : "passed"}><Bot /><span>Execution: {isLocked ? "locked — review only" : "ready for Telegram review"}</span></div></div></section>
-    {review && plan?.gw !== review.gameweek ? <section className="execution-note"><Clock3 /><div><strong>Historical research is deliberately separated</strong><p>Your last captured team and league review is GW{review.gameweek}; the next decision is GW{plan?.gw}. The dashboard will not use that older review to manufacture a current transfer recommendation.</p></div></section> : null}
+
+    <section className="surface">
+      <div className="section-heading"><div><span>WHY YOU CAN TRUST THIS</span><h2>Decision readiness</h2><p>Each status answers a different question, so &ldquo;valid&rdquo; is never confused with &ldquo;fresh&rdquo;.</p></div></div>
+      <div className="validation-grid">
+        <div className={quality === "valid" ? "passed" : "failed"}><ShieldCheck /><span>Snapshot: {quality}</span></div>
+        <div className={deadline && hoursRemaining != null && hoursRemaining > 0 ? "passed" : "failed"}><Clock3 /><span>Deadline: {deadline ? deadline.toLocaleString("en-MY", { dateStyle: "medium", timeStyle: "short" }) : "unknown"}</span></div>
+        <div className="passed"><ListChecks /><span>Execution: manual — you apply changes in the official FPL app</span></div>
+      </div>
+    </section>
+
+    {review && targetGameweek != null && targetGameweek !== review.gameweek ? <section className="execution-note"><Clock3 /><div><strong>Historical research is deliberately separated</strong><p>The finalized team and league review is GW{review.gameweek}; the next deadline is GW{targetGameweek}. The dashboard will not use that older review to manufacture a current transfer recommendation.</p></div></section> : null}
   </div>;
 }

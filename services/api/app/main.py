@@ -2,19 +2,17 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import hashlib
-import hmac
 import json
 import math
 import re
 import time
 import uuid
 
-from fastapi import FastAPI, Header, HTTPException, Query, Request
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import ValidationError
 
-from .autopilot import AutopilotClient, AutopilotUnavailableError
 from .league_registry import LeagueRegistry
 from . import live_fpl
 from .recommendations import MODEL_VERSION, build_recommendations, cohort_summary, elite_managers
@@ -26,7 +24,6 @@ from .schemas import (
     ApiMeta,
     CatalogResponse,
     EliteResponse,
-    IntegrationStatus,
     LeagueResponse,
     LeagueSummaryResponse,
     Manager,
@@ -53,7 +50,6 @@ app.add_middleware(
 )
 repository = SnapshotRepository(settings.data_dir, settings.snapshot_bucket)
 league_registry = LeagueRegistry(settings.data_dir)
-autopilot = AutopilotClient(settings)
 SEASON_PATTERN = re.compile(r"^20\d{2}-\d{2}$")
 
 
@@ -87,8 +83,8 @@ def health() -> dict:
     return {
         "status": "ok" if readiness["ready"] else "degraded", "service": "fpl-scout-api", "version": app.version,
         "revision": settings.git_revision, "build_time": settings.build_time,
-        "competitive_model": MODEL_VERSION, "execution_authority": "telegram",
-        "dashboard_writes_enabled": False,
+        "competitive_model": MODEL_VERSION, "execution_authority": "manual_fpl",
+        "dashboard_writes_enabled": False, "writes_enabled": False,
         "shared_snapshots": bool(settings.snapshot_bucket),
         "readiness": readiness,
     }
@@ -98,44 +94,6 @@ def health() -> dict:
 def ready() -> JSONResponse:
     payload = _readiness()
     return JSONResponse(payload, status_code=200 if payload["ready"] else 503)
-
-
-@app.post("/internal/v1/snapshots/{filename}")
-async def publish_snapshot(
-    filename: str,
-    request: Request,
-    authorization: str | None = Header(default=None),
-) -> dict[str, str | int]:
-    """Ingest a VM-produced read-only snapshot into the private GCS store."""
-    expected = settings.autopilot_token
-    supplied = authorization.removeprefix("Bearer ").strip() if authorization else ""
-    if not expected or not hmac.compare_digest(supplied, expected):
-        raise HTTPException(status_code=401, detail="Invalid snapshot publisher token")
-    if not settings.snapshot_bucket:
-        raise HTTPException(status_code=503, detail="Shared snapshot bucket is not configured")
-    if filename not in {"bootstrap_cache.json", "fixtures_cache.json"} and not (
-        filename.startswith("gw") and filename.endswith("_data.json") and filename.replace("_", "").replace(".", "").isalnum()
-    ):
-        raise HTTPException(status_code=400, detail="Invalid snapshot filename")
-    body = await request.body()
-    if len(body) > 5_000_000:
-        raise HTTPException(status_code=413, detail="Snapshot exceeds 5 MB limit")
-    try:
-        payload = json.loads(body)
-    except (UnicodeDecodeError, json.JSONDecodeError) as error:
-        raise HTTPException(status_code=400, detail="Snapshot is not valid JSON") from error
-    if filename.startswith("gw"):
-        quality, issues = snapshot_quality(payload)
-        if quality != "valid":
-            raise HTTPException(status_code=422, detail={"quality": quality, "issues": issues[:10]})
-        if int(payload.get("gw") or 0) <= 0 or not payload.get("competitors"):
-            raise HTTPException(status_code=422, detail="Snapshot has no gameweek competitors")
-    if repository._bucket is None:
-        raise HTTPException(status_code=503, detail="GCS repository is unavailable")
-    blob = repository._bucket.blob(f"snapshots/{filename}")
-    blob.upload_from_string(json.dumps(payload, separators=(",", ":")), content_type="application/json")
-    repository._remote_cache.pop(filename, None)
-    return {"status": "published", "filename": filename, "bytes": len(body)}
 
 
 @app.get("/v1/me")
@@ -353,9 +311,9 @@ def projections_current(
 ) -> ProjectionResponse:
     """Return ownership-independent V5 laboratory projections.
 
-    This endpoint is deliberately separate from production recommendations and
-    the Telegram execution route.  Its candidate universe is the full official
-    FPL catalogue, including players no tracked manager owns.
+    This endpoint is deliberately separate from production recommendations.
+    Its candidate universe is the full official FPL catalogue, including
+    players no tracked manager owns.
     """
     gw = gw or _current_gameweek()
     target_gw = min(gw + 1, 38)
@@ -476,38 +434,6 @@ def recommendations(
     )
 
 
-@app.get("/v1/integration/status", response_model=IntegrationStatus)
-def integration_status() -> IntegrationStatus:
-    missing = []
-    if not settings.telegram_configured:
-        missing.extend(["stable HTTPS webhook", "Telegram allowed user ID", "webhook secret"])
-    return IntegrationStatus(
-        configured=settings.telegram_configured,
-        mode="approval" if settings.telegram_configured else "disconnected",
-        bot_name=settings.telegram_bot_name,
-        approvals_enabled=settings.telegram_configured,
-        missing=missing,
-    )
-
-
-@app.get("/v1/autopilot/status")
-def autopilot_status() -> dict:
-    return {
-        "configured": autopilot.configured,
-        "mode": "read_only" if autopilot.configured else "disconnected",
-        "execution_authority": "telegram",
-        "dashboard_writes_enabled": False,
-    }
-
-
-@app.get("/v1/autopilot/control-centre")
-def autopilot_control_centre() -> dict:
-    try:
-        return autopilot.control_centre()
-    except AutopilotUnavailableError as error:
-        raise HTTPException(status_code=503, detail=str(error)) from error
-
-
 def _league_or_404(league_id: int, gw: int) -> dict:
     try:
         return repository.league(league_id, gw)
@@ -583,7 +509,7 @@ def transfer_optimizer(
         "league_id": league_id, "gameweek": gw, "target_gameweeks": targets,
         "free_transfers": free_transfers,
         "free_transfers_source": "request_or_default_assumption",
-        "execution_authority": "telegram", "writes_enabled": False,
+        "execution_authority": "manual_fpl", "writes_enabled": False,
         **result,
     }
 
@@ -689,63 +615,25 @@ def decision_current(
     league_id: int = Query(default=settings.default_league_id, gt=0),
     gw: int | None = Query(default=None, ge=1, le=38),
 ) -> dict:
-    """Return the single decision packet shared by Telegram and the dashboard.
+    """Return the read-only decision-support packet for the current gameweek.
 
-    The API never executes FPL writes.  When the read-only autopilot bridge has
-    a matching pending plan, its exact lineup/transfer packet is embedded;
-    otherwise the response remains a non-executable V4 diagnostic packet.
+    The Scout system never writes to FPL. Every transfer, captain, lineup and
+    chip change is reviewed and applied manually by the owner in the official
+    FPL app. This packet is a locally derived V4 diagnostic built from the
+    official catalogue, the latest finalized league snapshot and the projection
+    model; it is advisory only and is never executable.
     """
     gw = gw or _current_gameweek()
-    bridge: dict = {}
-    if autopilot.configured:
-        try:
-            bridge = autopilot.control_centre()
-        except AutopilotUnavailableError:
-            bridge = {}
-    plan = bridge.get("plan") if isinstance(bridge, dict) else None
-    if not isinstance(plan, dict) or int(plan.get("gw") or -1) != gw:
-        plan = None
-    plan_is_bound_v4 = bool(
-        isinstance(plan, dict)
-        and plan.get("model_version") == MODEL_VERSION
-        and plan.get("plan_id")
-        and plan.get("input_fp")
-    )
-    plan_is_v4 = plan_is_bound_v4 and plan.get("status") == "pending"
-    plan_is_applied = plan_is_bound_v4 and plan.get("status") == "executed"
+    disclaimer = "Read-only decision support. Review and apply every change manually in the official FPL app."
     try:
         recommendation = recommendations(league_id=league_id, gw=gw).model_dump(mode="json")
     except HTTPException as error:
         if error.status_code != 404:
             raise
-        # Before the deadline, current-GW opponent picks cannot exist yet. A
-        # fully bound V4 plan from the read-only bridge is still canonical;
-        # competitor context remains neutral until the locked snapshot lands.
+        # Before the deadline the current-GW opponent picks are not locked yet,
+        # so no competitor-aware recommendation can exist. Expose that plainly
+        # rather than inventing a move.
         now = datetime.now(timezone.utc).isoformat()
-        if plan_is_v4 or plan_is_applied:
-            packet_body = {"league_id": league_id, "gameweek": gw, "plan": plan}
-            decision_id = hashlib.sha256(
-                json.dumps(packet_body, sort_keys=True, separators=(",", ":")).encode()
-            ).hexdigest()
-            return {
-                "decision_id": decision_id,
-                "model_version": MODEL_VERSION,
-                "league_id": league_id,
-                "gameweek": gw,
-                "generated_at": plan.get("generated_at") or now,
-                "meta": {"source": "autopilot_bridge", "stale": False,
-                         "quality_status": "valid", "quality_issues": [],
-                         "snapshot_gameweek": gw},
-                "competitive": {"model_version": MODEL_VERSION, "phase": "MATCH",
-                                 "phase_reason": "Canonical V4 plan; current opponent picks are not locked yet.",
-                                 "alignment": 0, "target_alignment": 82},
-                "plan": plan,
-                "packet_status": "valid" if plan_is_v4 else "applied",
-                "executable": plan_is_v4,
-                "execution_authority": "telegram",
-                "writes_enabled": False,
-                "disclaimer": "Decision packet is read-only; Telegram performs final live validation and execution.",
-            }
         return {
             "decision_id": hashlib.sha256(f"{league_id}:{gw}:safe_hold".encode()).hexdigest(),
             "model_version": MODEL_VERSION,
@@ -760,20 +648,15 @@ def decision_current(
             "plan": None,
             "packet_status": "safe_hold",
             "executable": False,
-            "execution_authority": "telegram",
+            "execution_authority": "manual_fpl",
             "writes_enabled": False,
-            "disclaimer": "No executable decision exists until the current FPL snapshot is ingested.",
+            "disclaimer": disclaimer,
         }
-    # A competitive context without a complete, bound plan is not a live
-    # decision.  Expose that state explicitly so clients cannot mistake a
-    # diagnostic/legacy bridge payload for an executable recommendation.
-    packet_status = "valid" if plan_is_v4 else ("applied" if plan_is_applied else "safe_hold")
     packet_body = {
         "league_id": league_id,
         "gameweek": gw,
         "competitive": recommendation["competitive"],
-        "plan": plan,
-        "packet_status": packet_status,
+        "packet_status": "advisory",
     }
     decision_id = hashlib.sha256(json.dumps(packet_body, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     return {
@@ -785,12 +668,12 @@ def decision_current(
         "generated_at": recommendation["meta"].get("generated_at"),
         "meta": recommendation["meta"],
         "competitive": recommendation["competitive"],
-        "plan": plan,
-        "packet_status": packet_status,
-        "executable": plan_is_v4,
-        "execution_authority": "telegram",
+        "plan": None,
+        "packet_status": "advisory",
+        "executable": False,
+        "execution_authority": "manual_fpl",
         "writes_enabled": False,
-        "disclaimer": "Decision packet is read-only; Telegram performs final live validation and execution.",
+        "disclaimer": disclaimer,
     }
 
 

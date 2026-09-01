@@ -36,7 +36,6 @@ def main() -> int:
         return 0
     decision = get_json(f"{API}/v1/decision/current?league_id=58005&gw={gw}")
     v5 = get_json(f"{API}/v1/projections/current?gw={max(1, gw-1)}")
-    control = get_json(f"{API}/v1/autopilot/control-centre")
     optimizer = get_json(
         f"{API}/v1/optimizer/transfers?league_id=58005&gw={max(1, gw-1)}&horizon=5&max_transfers=2"
     )
@@ -45,7 +44,7 @@ def main() -> int:
            for p in bootstrap.get("elements", [])]
     artifacts = {
         "decision": decision, "v5": v5, "fpl_baseline": fpl,
-        "shadow_v42": control.get("shadow_v42"), "net_ev_optimizer": optimizer,
+        "net_ev_optimizer": optimizer,
     }
     payload = {"schema_version": 2, "season": args.season, "gameweek": gw,
                "captured_at": datetime.now(timezone.utc).isoformat(), "deadline": event["deadline_time"],
@@ -57,8 +56,7 @@ def main() -> int:
                    "competitive_model": health.get("competitive_model"),
                    "v5_model": v5.get("projection_version"),
                    "optimizer_version": optimizer.get("optimizer_version"),
-                   "shadow_model": (control.get("shadow_v42") or {}).get("model_version"),
-                   "external_bridge": control.get("source_provenance"),
+                   "execution_authority": health.get("execution_authority"),
                }}
     payload["input_hash"] = canonical_hash(payload)
     target = ROOT / "data" / "journal-raw" / args.season / f"gw{gw:02d}" / "predeadline.json"

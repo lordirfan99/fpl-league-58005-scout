@@ -11,10 +11,6 @@ class Settings:
     my_team_id: int
     default_league_id: int
     allowed_origins: tuple[str, ...]
-    telegram_configured: bool
-    telegram_bot_name: str | None
-    autopilot_base_url: str | None
-    autopilot_token: str | None
     snapshot_bucket: str | None
     git_revision: str | None
     build_time: str | None
@@ -35,10 +31,6 @@ class Settings:
             my_team_id=int(os.getenv("FPL_MY_TEAM_ID", "2797967")),
             default_league_id=int(os.getenv("FPL_DEFAULT_LEAGUE_ID", "58005")),
             allowed_origins=tuple(origin.strip() for origin in origins.split(",") if origin.strip()),
-            telegram_configured=bool(os.getenv("TELEGRAM_WEBHOOK_SECRET") and os.getenv("TELEGRAM_ALLOWED_USER_IDS")),
-            telegram_bot_name=os.getenv("TELEGRAM_BOT_NAME"),
-            autopilot_base_url=os.getenv("FPL_AUTOPILOT_BASE_URL", "").rstrip("/") or None,
-            autopilot_token=os.getenv("FPL_AUTOPILOT_TOKEN", "").strip() or None,
             snapshot_bucket=os.getenv("FPL_SNAPSHOT_BUCKET", "").strip() or None,
             git_revision=(os.getenv("FPL_GIT_SHA") or os.getenv("K_REVISION") or "").strip() or None,
             build_time=os.getenv("FPL_BUILD_TIME", "").strip() or None,
