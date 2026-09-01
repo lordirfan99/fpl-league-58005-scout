@@ -4,7 +4,7 @@
 
 **Branch:** `master`
 
-**Repository/frontend revision:** `017dd0c333a5381881383628b46e12a6535f25f0`
+**Frontend code revision:** `017dd0c333a5381881383628b46e12a6535f25f0`
 
 **API revision:** `ea65bfa33a7b41d898a1e6910d756ff6a7e3ca4e`
 
