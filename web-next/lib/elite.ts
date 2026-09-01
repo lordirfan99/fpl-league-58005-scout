@@ -25,9 +25,13 @@ function rows(counter: Map<string, number>, denominator: number): CountRow[] {
 }
 
 export function analyzeElite(managers: Manager[]) {
-  const elite = getElite(managers);
+  // Live league standings can arrive before every squad is hydrated. Never
+  // let empty squads pollute formation, captaincy, ownership, or value stats.
+  const hydrated = managers.filter((manager) => manager.squad?.length > 0);
+  const researchManagers = hydrated.length ? hydrated : managers;
+  const elite = getElite(researchManagers);
   const playerById = new Map<number, Pick>(), eliteOwned = new Map<number, number>(), eliteStarted = new Map<number, number>(), leagueOwned = new Map<number, number>(), captainCounts = new Map<string, number>(), formationCounts = new Map<string, number>(), transferCounts = new Map<string, number>(), chipCounts = new Map<string, number>();
-  managers.forEach((manager) => manager.squad.forEach((pick) => {
+  researchManagers.forEach((manager) => manager.squad.forEach((pick) => {
     playerById.set(pick.element, pick);
     leagueOwned.set(pick.element, (leagueOwned.get(pick.element) ?? 0) + 1);
   }));
@@ -69,7 +73,7 @@ export function analyzeElite(managers: Manager[]) {
 
   const ownership = [...eliteOwned].map(([element, count]) => {
     const pick = playerById.get(element)!;
-    const elitePercentage = count / elite.length * 100, leaguePercentage = (leagueOwned.get(element) ?? 0) / managers.length * 100;
+    const elitePercentage = count / elite.length * 100, leaguePercentage = (leagueOwned.get(element) ?? 0) / researchManagers.length * 100;
     return { ...pick, count, elitePercentage, leaguePercentage, edge: elitePercentage - leaguePercentage, starterPercentage: (eliteStarted.get(element) ?? 0) / elite.length * 100 };
   }).sort((a, b) => b.elitePercentage - a.elitePercentage);
 
