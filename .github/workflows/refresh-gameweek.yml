@@ -106,7 +106,10 @@ jobs:
               for manager in full["competitors"]:
                   squad = manager.get("squad", [])
                   assert len(squad) == 15, f"entry {manager.get('entry_id')} has {len(squad)} players"
-                  assert sum(1 for pick in squad if pick.get("multiplier", 0) > 0) == 11
+                  # After a completed GW, auto-subs leave exactly 11 active picks;
+                  # a Bench Boost gameweek activates all 15.
+                  active = sum(1 for pick in squad if pick.get("multiplier", 0) > 0)
+                  assert active in (11, 15), f"entry {manager.get('entry_id')} has {active} active picks"
               print(f"GW{gw} league {league}: {len(full['competitors'])} valid managers")
           PY
       - name: Commit final snapshots
