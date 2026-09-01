@@ -16,8 +16,9 @@ function ActivityList({ rows, empty }: { rows: Count[]; empty: string }) {
   return rows.length ? <div className="ranked-list">{rows.slice(0, 15).map((row, index) => <article key={row.name}><span>{index + 1}</span><strong>{row.name}</strong><b>{row.count}<small>{row.percentage.toFixed(1)}%</small></b></article>)}</div> : <div className="empty-state"><h3>No activity recorded</h3><p>{empty}</p></div>;
 }
 
-export default async function TransfersPage({ searchParams }: { searchParams: Promise<{ league?: string }> }) {
-  const selected = resolveLeague((await searchParams).league), data = await getLeagueData(selected.id), elite = analyzeElite(data.managers);
+export default async function TransfersPage({ searchParams }: { searchParams: Promise<{ league?: string; gw?: string }> }) {
+  const params = await searchParams;
+  const selected = resolveLeague(params.league), requestedGw = params.gw ? Math.max(1, Math.min(38, Number(params.gw) || 1)) : undefined, data = await getLeagueData(selected.id, requestedGw), elite = analyzeElite(data.managers);
   const moves = countRows(data.managers.flatMap((manager) => manager.transfer_details?.map((move) => `${move.out} → ${move.in}`) ?? []), data.managers.length);
   const chips = countRows(data.managers.flatMap((manager) => manager.chips_used?.map((chip) => chipLabel(chip.name ?? chip.chip_name ?? "Unknown")) ?? []), data.managers.length);
   const activeManagers = data.managers.filter((manager) => manager.transfers_made > 0).length;

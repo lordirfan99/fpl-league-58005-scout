@@ -31,8 +31,9 @@ function Chart({ title, rows }: { title: string; rows: Row[] }) {
   return <section className="surface"><div className="section-heading"><div><span>LEAGUE BREAKDOWN</span><h2>{title}</h2></div></div><div className="distribution-list">{rows.map((row) => <article key={row.label}><div><strong>{row.label}</strong><span>{row.count} · {row.percentage.toFixed(1)}%</span></div><div className="distribution-track"><i style={{ width: `${row.count / maximum * 100}%` }} /></div></article>)}</div></section>;
 }
 
-export default async function AnalyticsPage({ searchParams }: { searchParams: Promise<{ league?: string }> }) {
-  const selected = resolveLeague((await searchParams).league), data = await getLeagueData(selected.id), elite = analyzeElite(data.managers);
+export default async function AnalyticsPage({ searchParams }: { searchParams: Promise<{ league?: string; gw?: string }> }) {
+  const params = await searchParams;
+  const selected = resolveLeague(params.league), requestedGw = params.gw ? Math.max(1, Math.min(38, Number(params.gw) || 1)) : undefined, data = await getLeagueData(selected.id, requestedGw), elite = analyzeElite(data.managers);
   const formations = grouped(data.managers.map(formation), data.managers.length).slice(0, 8), captains = grouped(data.managers.map((manager) => manager.captain || "Unknown"), data.managers.length).slice(0, 10);
   const points = histogram(data.managers.map((manager) => manager.gw_points), 10), costs = histogram(data.managers.map((manager) => manager.squad_cost).filter(Boolean), 1, "£");
   const average = data.managers.reduce((sum, manager) => sum + manager.gw_points, 0) / data.managers.length;
