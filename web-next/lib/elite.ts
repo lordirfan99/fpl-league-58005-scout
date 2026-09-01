@@ -15,6 +15,7 @@ function median(values: number[]) {
 }
 
 function formation(manager: Manager) {
+  if (!manager.squad?.length) return "3-4-3";
   const starters = manager.squad.slice(0, 11);
   return `${starters.filter((pick) => pick.position === "DEF").length}-${starters.filter((pick) => pick.position === "MID").length}-${starters.filter((pick) => pick.position === "FWD").length}`;
 }
@@ -86,7 +87,7 @@ export function analyzeElite(managers: Manager[]) {
     averageGw: points.reduce((sum, value) => sum + value, 0) / elite.length,
     medianGw: median(points),
     averageTotal: elite.reduce((sum, manager) => sum + manager.total_points, 0) / elite.length,
-    averageValue: elite.reduce((sum, manager) => sum + manager.squad_cost, 0) / elite.length,
+    averageValue: elite.filter((manager) => manager.squad_cost > 0).reduce((sum, manager) => sum + manager.squad_cost, 0) / Math.max(1, elite.filter((manager) => manager.squad_cost > 0).length),
     averageRank: Math.round(elite.reduce((sum, manager) => sum + manager.overall_rank, 0) / elite.length),
     topScore: Math.max(...points),
   };
