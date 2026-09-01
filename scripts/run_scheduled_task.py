@@ -121,12 +121,21 @@ def task_finalize_gameweek(gameweek: int | None) -> None:
         print(f"GW{gameweek} snapshots already published; nothing to do", flush=True)
         return
 
-    _run("scripts/fetch_fixture_horizon.py")
-    _run("scripts/fetch_gw_data_fixed.py", "--gw", str(gameweek), "--league", *map(str, LEAGUES), "--max", "3000", "--workers", "16")
-    for league in LEAGUES:
-        _run("scripts/generate_analysis.py", "--gw", str(gameweek), "--league", str(league))
-    _run("scripts/build_gameweek_journal.py", "--gw", str(gameweek))
-    _run("scripts/audit_model_backtest.py", "--season", SEASON, "--output", "reports/model-validation/2026-27.json")
+    # The task image carries historical, git-finalized gameweeks as a recovery
+    # source.  On the first scheduled run after this migration, publish those
+    # immutable artifacts instead of trying to fetch them again: the collector
+    # intentionally refuses to overwrite its packaged final files.
+    local_required = [ROOT / "data" / name.removeprefix("snapshots/") for name in required]
+    local_journal = ROOT / "data" / "journal" / SEASON / f"gw{gameweek:02d}.json"
+    if all(path.is_file() for path in local_required) and local_journal.is_file():
+        print(f"GW{gameweek} is already finalized in the task image; publishing to GCS", flush=True)
+    else:
+        _run("scripts/fetch_fixture_horizon.py")
+        _run("scripts/fetch_gw_data_fixed.py", "--gw", str(gameweek), "--league", *map(str, LEAGUES), "--max", "3000", "--workers", "16")
+        for league in LEAGUES:
+            _run("scripts/generate_analysis.py", "--gw", str(gameweek), "--league", str(league))
+        _run("scripts/build_gameweek_journal.py", "--gw", str(gameweek))
+        _run("scripts/audit_model_backtest.py", "--season", SEASON, "--output", "reports/model-validation/2026-27.json")
     _validate_gameweek(gameweek)
 
     for league in LEAGUES:
