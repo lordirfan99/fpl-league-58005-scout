@@ -41,6 +41,10 @@ GitHub schedules can start a few minutes late under platform load. The refresh l
 
 ## Dashboard and API changes now live
 
+- Planner now builds its five-week outlook from the owner’s full official live 15-player squad, rather than the league Elite hydration subset. It therefore shows actual opponent/home-away fixtures and non-zero official FDR values even when the owner is outside the Elite cohort.
+- My Team maps each official pick using the player catalogue's actual FPL position—not pick order—and shows official player points after a match begins or the upcoming home/away fixture before kick-off.
+- Live KK Old Boys standings now paginate every official FPL page (1,218 managers at the 1 September check). Elite membership is computed as 5% of that complete league population; live squad research is explicitly limited to the hydrated cohort.
+- Large public leagues such as Overall IFE default to their latest finalized snapshot when a full live cohort would exceed the dashboard render budget. The page labels that state as finalized rather than presenting an error or stale data as live.
 - My Team prioritizes the official live feed over the older Autopilot artifact for squad, score, total, overall rank, league rank and update timestamp. In-progress values are labelled provisional; they are no longer hidden behind `Pending` placeholders.
 - Public league `131997` no longer fails on Transfers when the configured personal team is not a member. League transfer/chip/elite evidence remains available, while only the personalized NET-EV optimizer becomes unavailable with an explanatory link back to league `58005`.
 - Internal chip identifiers are translated for users (`bboost` → `Bench Boost`, `3xc` → `Triple Captain`, `freehit` → `Free Hit`). Counts remain those captured in the finalized league snapshot.
@@ -58,7 +62,8 @@ GitHub schedules can start a few minutes late under platform load. The refresh l
 | Area | Freshness/source | Expected behavior |
 |---|---|---|
 | My Team | Official mutable FPL entry/picks feed, read on page request | Shows the current live GW squad and provisional numeric score/ranks. Values may change until FPL finalises the event. |
-| Assistant / Autopilot / Planner | Latest persisted decision artifact plus current official deadline/catalog | Targets the next deadline. A source gate can place the plan in safe/read-only mode; the UI must not invent a transfer. |
+| Assistant / Autopilot | Latest persisted decision artifact plus current official deadline/catalog | Targets the next deadline. A source gate can place the plan in safe/read-only mode; the UI must not invent a transfer. |
+| Planner | Owner's official live 15-player squad plus current official fixture horizon | Shows the next five gameweeks' real opponent/home-away fixtures and FDR. Decision copy remains read-only whenever its canonical source gate is incomplete. |
 | League / Elite / Transfers / Analytics | Latest complete immutable league snapshot | Remains on GW1 while GW2 is unfinished or not data-checked. This is deliberate historical integrity, not a failed refresh. |
 | Players / V5 Lab | Hourly verified official bootstrap/fixture cache plus clearly labelled derived projections | Official identity, price, availability and fixtures; model xPts/ranges remain research rather than official outcomes. |
 | Journal | Immutable completed-GW records plus frozen pre-deadline evidence | A week is archived only after final data is available; future weeks remain planned/pending without fabricated results. |
@@ -66,9 +71,9 @@ GitHub schedules can start a few minutes late under platform load. The refresh l
 
 ## Verification evidence
 
-- API tests: **64 passed**, including live-score/league-rank derivation, one valid official-source case and five rejection cases for incomplete/placeholder-like payloads.
+- API tests: **65 passed**, including live-score/league-rank derivation, full official standings pagination, and rejection cases for incomplete/placeholder-like payloads.
 - Next.js typecheck, production build and dependency audit: **passed**.
-- Local browser checks: **26 passed, 2 intentional project-specific skips** across desktop and Pixel-sized projects. The suite includes every dashboard tab, My Team live-value assertions, public-league Transfers fallback, navigation, artwork and accessibility.
+- Browser checks run against production on 1 September: all dashboard tabs render on desktop and Pixel-sized projects after the public-League Elite fallback; the suite covers My Team live values, Planner fixture rendering, public-league Transfers fallback, navigation, artwork and accessibility.
 - Production route audit: **17/17 routes passed** at desktop and 393 px widths, with no route error and no page-level horizontal overflow. A clean production tab recorded no console errors.
 - Automated accessibility: no serious/critical WCAG 2 A/AA violations on tested critical pages.
 - Frozen-artifact manifest: **5 verified**; recovery drill restored and re-verified all 5 in isolation.

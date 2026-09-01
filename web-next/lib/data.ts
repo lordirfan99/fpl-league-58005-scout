@@ -1,5 +1,6 @@
 import "server-only";
 import type { Bootstrap, DashboardData, DataStatus, Fixture, FixtureHorizon, LeagueSnapshot, LeagueSummary, Manager, ManagerSummary } from "./types";
+import { getLiveTeam } from "./live";
 
 const DATA_BASE = process.env.FPL_DATA_BASE_URL ?? "https://fpl-scout-intelligence.netlify.app/data";
 const API_BASE = (process.env.FPL_API_BASE_URL ?? "https://fpl-scout-api-bztsnhv3ea-uc.a.run.app").replace(/\/$/, "");
@@ -82,6 +83,32 @@ export async function getDashboardData(leagueId = DEFAULT_LEAGUE_ID, gameweek?: 
 
 export async function getPlannerData(targetGameweek?: number) {
   const dashboard = await getDashboardData();
+  // The live league read only hydrates the Elite cohort's squads.  Planner
+  // must always use the owner's full official 15, otherwise a manager outside
+  // that cohort produces an empty horizon (0.0 FDR and TBC for every week).
+  const live = await getLiveTeam();
+  const liveSquad: Manager["squad"] = live?.picks.length === 15 ? live.picks.map((pick) => {
+    const player = dashboard.bootstrap.elements.find((row) => row.id === pick.element);
+    const position = player?.element_type === 1 ? "GKP" : player?.element_type === 2 ? "DEF" : player?.element_type === 3 ? "MID" : "FWD";
+    return {
+      element: pick.element,
+      name: pick.web_name,
+      position,
+      team: dashboard.bootstrap.teams.find((team) => team.id === pick.team)?.name ?? "—",
+      cost: pick.now_cost / 10,
+      multiplier: pick.multiplier,
+      is_captain: pick.is_captain,
+      is_vice_captain: pick.is_vice_captain,
+    };
+  }) : dashboard.manager.squad;
+  const manager: Manager = liveSquad.length === 15 ? {
+    ...dashboard.manager,
+    gw_points: live?.points ?? dashboard.manager.gw_points,
+    total_points: live?.entry.total_points ?? dashboard.manager.total_points,
+    overall_rank: live?.entry.overall_rank ?? dashboard.manager.overall_rank,
+    league_rank: live?.league?.entry_rank ?? dashboard.manager.league_rank,
+    squad: liveSquad,
+  } : dashboard.manager;
   // Planning always begins at the explicitly supplied upcoming deadline.
   // Without it, fall back to the next GW after the latest captured review.
   const fromGameweek = Math.min(Math.max(targetGameweek ?? dashboard.gameweek + 1, dashboard.gameweek + 1), 38);
@@ -94,7 +121,7 @@ export async function getPlannerData(targetGameweek?: number) {
   } else {
     fixtureHorizon = (await readJson<{ gameweeks: FixtureHorizon }>("fixtures_cache.json")).gameweeks;
   }
-  return { ...dashboard, fixtureHorizon, fromGameweek, toGameweek };
+  return { ...dashboard, manager, fixtureHorizon, fromGameweek, toGameweek };
 }
 
 export async function getLeagueData(leagueId = DEFAULT_LEAGUE_ID, gameweek?: number): Promise<LeagueDashboardData> {

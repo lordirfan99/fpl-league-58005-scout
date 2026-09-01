@@ -53,6 +53,13 @@ test("My Team displays official live values instead of placeholder states", asyn
   await expect(page.getByText("Pending", { exact: true })).toHaveCount(0);
 });
 
+test("Planner uses the official 15-player squad and current fixture horizon", async ({ page }) => {
+  await page.goto("/planner", { waitUntil: "domcontentloaded" });
+  await expect(page.locator(".horizon-cards article").first()).not.toContainText("0.0 avg FDR");
+  await expect(page.locator(".fixture-chip:not(.blank)").first()).toBeVisible();
+  await expect(page.locator(".fixture-matrix tbody tr")).toHaveCount(15);
+});
+
 test("public league transfers remain usable without a personalized optimizer", async ({ page }) => {
   await page.goto("/transfers?league=131997", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { name: "Transfers & chips" })).toBeVisible();
