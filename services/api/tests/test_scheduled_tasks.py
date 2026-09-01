@@ -57,13 +57,14 @@ def test_finalizer_reuses_packaged_finalized_gameweek_before_uploading(monkeypat
     monkeypatch.setattr(MODULE, "_run", lambda *command: commands.append(command))
     monkeypatch.setattr(MODULE, "_validate_gameweek", lambda _gameweek: None)
     monkeypatch.setattr(MODULE, "_upload", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(MODULE, "task_decision_refresh", lambda *args, **kwargs: None)
 
     MODULE.task_finalize_gameweek(7)
     assert commands == []
 
 
 def test_task_names_match_the_provisioned_cloud_run_jobs() -> None:
-    parser_choices = {"fixtures", "capture-journal", "finalize-gameweek", "monitor"}
+    parser_choices = {"fixtures", "capture-journal", "decision-refresh", "decision-final-window", "finalize-gameweek", "monitor"}
     # cloudbuild.api.yaml deploys one job per task arg.
     cloudbuild = (Path(__file__).resolve().parents[3] / "cloudbuild.api.yaml").read_text(encoding="utf-8")
     for task in parser_choices:

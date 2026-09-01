@@ -11,11 +11,11 @@ const positionFromElementType = (elementType?: number): Pick["position"] => elem
 
 export default async function MyTeamPage() {
   const [data, live] = await Promise.all([getDashboardData(), getLiveTeam()]);
-  const rec = await getCompetitiveRecommendation(data.leagueId, data.gameweek).catch(() => null);
   const { manager } = data;
 
   const season = deriveSeasonContext(data.bootstrap.events, { finalizedGw: data.gameweek, liveGameweek: live?.gameweek });
   const targetGameweek = season.nextDeadlineGw;
+  const rec = await getCompetitiveRecommendation(data.leagueId, targetGameweek).catch(() => null);
   const liveGameweek = live?.gameweek;
   const liveTeam = liveGameweek != null && liveGameweek >= data.gameweek && live?.picks?.length === 15;
   const displayGameweek = liveTeam ? liveGameweek : data.gameweek;
@@ -28,7 +28,7 @@ export default async function MyTeamPage() {
   const liveOverallRank = live?.entry.overall_rank;
   const liveLeagueRank = live?.league?.entry_rank;
 
-  const move = rec?.transfers?.[0];
+  const move = rec?.packetStatus === "locked" ? null : rec?.transfers?.[0];
   const flagged = rec?.risks?.map((player) => player.name).filter(Boolean) ?? [];
 
   const playerMeta = (pick: Pick) => {
@@ -44,6 +44,7 @@ export default async function MyTeamPage() {
   };
 
   return <div className="page-stack">
+    {rec?.packetStatus === "locked" ? <section className="execution-note"><span className="status-dot warning" /><div><strong>Deadline locked</strong><p>Transfer and captain recommendations are now frozen. This page is in live-review mode until FPL finalises the gameweek.</p></div></section> : null}
     <PageHeader eyebrow={`${liveTeam ? "OFFICIAL LIVE TEAM" : historical ? "LAST TEAM CAPTURE" : "MY TEAM"} · GW${displayGameweek}`} title={live?.entry.entry_name || manager.entry_name} description={`${live?.entry.player_name || manager.player_name} · FPL ID ${manager.entry_id.toLocaleString()}${liveTeam ? ` · Current GW${displayGameweek} squad, score and ranks from official FPL.` : historical ? ` · This is a completed-GW review, not the current GW${targetGameweek} lineup.` : ""}`} updated={liveTeam && live?.fetched_at ? new Date(live.fetched_at).toLocaleString("en-MY", { dateStyle: "medium", timeStyle: "short" }) : data.fetchedAt ? new Date(data.fetchedAt).toLocaleString("en-MY", { dateStyle: "medium", timeStyle: "short" }) : undefined} />
     {liveTeam ? <section className="execution-note"><span className="status-dot" /><div><strong>GW{displayGameweek} official live data</strong><p>The squad, provisional score, total points and ranks below come directly from FPL. They refresh when this page loads and can still change until the Gameweek is finalised.</p></div></section> : null}
     {historical ? <section className="execution-note"><span className="status-dot warning" /><div><strong>Historical squad view</strong><p>This pitch is the latest captured GW{data.gameweek} team. For the upcoming GW{targetGameweek} deadline, use the Assistant recommendation and apply any change yourself in the official FPL app.</p></div></section> : null}

@@ -19,6 +19,7 @@ from .recommendations import MODEL_VERSION, build_recommendations, cohort_summar
 from .projection_types import PROJECTION_VERSION
 from .projections import build_projections
 from .multiweek_optimizer import MultiWeekContext, OPTIMIZER_VERSION, optimize_multiweek_transfers
+from .planning import next_event, packet_status
 from .repository import ArtifactIntegrityError, LiveSnapshotNotFoundError, SnapshotNotFoundError, SnapshotRepository
 from .schemas import (
     ApiMeta,
@@ -627,40 +628,42 @@ def decision_current(
     official catalogue, the latest finalized league snapshot and the projection
     model; it is advisory only and is never executable.
     """
-    gw = gw or _current_gameweek()
     disclaimer = "Read-only decision support. Review and apply every change manually in the official FPL app."
+    bootstrap = repository.bootstrap()
+    event = next((row for row in bootstrap.get("events", []) if int(row.get("id") or 0) == gw), None) if gw else next_event(bootstrap)
+    if event is None:
+        raise HTTPException(status_code=404, detail="No upcoming FPL deadline is available")
+    target_gw = int(event["id"])
     try:
-        recommendation = recommendations(league_id=league_id, gw=gw).model_dump(mode="json")
-    except HTTPException as error:
-        if error.status_code != 404:
-            raise
-        # Before the deadline the current-GW opponent picks are not locked yet,
-        # so no competitor-aware recommendation can exist. Expose that plainly
-        # rather than inventing a move.
+        recommendation = repository.planning("2026-27", target_gw)
+    except SnapshotNotFoundError:
         now = datetime.now(timezone.utc).isoformat()
         return {
-            "decision_id": hashlib.sha256(f"{league_id}:{gw}:safe_hold".encode()).hexdigest(),
+            "decision_id": hashlib.sha256(f"{league_id}:{target_gw}:insufficient_data".encode()).hexdigest(),
             "model_version": MODEL_VERSION,
-            "league_id": league_id,
-            "gameweek": gw,
+            "league_id": league_id, "gameweek": target_gw, "target_gameweek": target_gw,
+            "source_gameweek": None,
             "generated_at": now,
-            "meta": {"source": "snapshot", "stale": True, "quality_status": "unknown",
-                     "quality_issues": ["missing_gameweek_snapshot"], "snapshot_gameweek": gw},
+            "meta": {"source": "deadline-planning", "stale": True, "quality_status": "unknown",
+                     "quality_issues": ["planning_artifact_unavailable"], "snapshot_gameweek": None},
             "competitive": {"model_version": MODEL_VERSION, "phase": "MATCH",
-                             "phase_reason": "Waiting for the current gameweek snapshot.",
+                             "phase_reason": "Waiting for the deadline-safe planning artifact.",
                              "alignment": 0, "target_alignment": 82},
             "plan": None,
-            "packet_status": "safe_hold",
+            "packet_status": "insufficient_data",
             "executable": False,
             "execution_authority": "manual_fpl",
             "writes_enabled": False,
             "disclaimer": disclaimer,
         }
+    deadline = datetime.fromisoformat(str(recommendation["deadline"]).replace("Z", "+00:00"))
+    current_status = packet_status(deadline)
+    quality_status = recommendation.get("quality_status", "unknown")
+    quality_issues = recommendation.get("quality_issues", [])
     packet_body = {
-        "league_id": league_id,
-        "gameweek": gw,
+        "league_id": league_id, "gameweek": target_gw,
         "competitive": recommendation["competitive"],
-        "packet_status": "advisory",
+        "packet_status": current_status,
     }
     decision_id = hashlib.sha256(json.dumps(packet_body, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     return {
@@ -668,12 +671,14 @@ def decision_current(
         "decision_id": decision_id,
         "model_version": MODEL_VERSION,
         "league_id": league_id,
-        "gameweek": gw,
-        "generated_at": recommendation["meta"].get("generated_at"),
-        "meta": recommendation["meta"],
+        "gameweek": target_gw, "target_gameweek": target_gw,
+        "generated_at": recommendation.get("generated_at"),
+        "packet_status": current_status,
+        "meta": {"source": "deadline-planning", "snapshot_at": recommendation.get("generated_at"),
+                 "stale": current_status == "locked", "quality_status": quality_status,
+                 "quality_issues": quality_issues, "snapshot_gameweek": recommendation.get("source_gameweek")},
         "competitive": recommendation["competitive"],
         "plan": None,
-        "packet_status": "advisory",
         "executable": False,
         "execution_authority": "manual_fpl",
         "writes_enabled": False,

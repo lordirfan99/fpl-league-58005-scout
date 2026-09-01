@@ -25,6 +25,9 @@ export interface CompetitivePlayer extends Pick {
 }
 
 export interface CompetitiveRecommendation {
+  packetStatus: "candidate" | "final" | "locked" | "live_review" | "finalized" | "insufficient_data";
+  targetGameweek?: number;
+  sourceGameweek?: number;
   meta: { snapshotAt?: string; stale: boolean; freshnessHours?: number; qualityStatus: "valid" | "invalid" | "unknown"; qualityIssues: string[] };
   eliteCount: number;
   eliteOverlap: number;
@@ -69,6 +72,8 @@ export async function getCompetitiveRecommendation(leagueId: number, gameweek: n
   const phaseInputs = (competitive.phase_inputs as Json | undefined) ?? {};
   const players = (value: unknown) => ((value as Json[]) ?? []).map(player);
   return {
+    packetStatus: (text(raw.packet_status) ?? "insufficient_data") as CompetitiveRecommendation["packetStatus"],
+    targetGameweek: optionalNumber(raw.target_gameweek), sourceGameweek: optionalNumber(raw.source_gameweek),
     meta: {
       snapshotAt: text(meta.snapshot_at), stale: Boolean(meta.stale),
       freshnessHours: optionalNumber(meta.freshness_hours),

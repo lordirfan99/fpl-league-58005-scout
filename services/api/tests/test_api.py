@@ -120,26 +120,23 @@ def test_canonical_decision_packet_contract() -> None:
     assert payload["writes_enabled"] is False
     assert payload["executable"] is False
     assert payload["plan"] is None
-    assert payload["packet_status"] == "advisory"
+    assert payload["packet_status"] == "insufficient_data"
 
 
-def test_decision_packet_is_local_only_safe_hold_without_snapshot(monkeypatch) -> None:
-    """With no finalized snapshot the packet is a plainly labelled safe hold.
+def test_decision_packet_is_local_only_when_planning_artifact_is_unavailable(monkeypatch) -> None:
+    """Without a planning artifact the API cannot fabricate a recommendation.
 
     There is no bridge fallback: the API can only ever return locally derived
     read-only decision support.
     """
-    monkeypatch.setattr(
-        main, "recommendations",
-        lambda **_: (_ for _ in ()).throw(HTTPException(status_code=404)),
-    )
+    monkeypatch.setattr(main.repository, "planning", lambda *_: (_ for _ in ()).throw(main.SnapshotNotFoundError("plan")))
     payload = client.get("/v1/decision/current?league_id=58005&gw=2").json()
-    assert payload["packet_status"] == "safe_hold"
+    assert payload["packet_status"] == "insufficient_data"
     assert payload["executable"] is False
     assert payload["plan"] is None
     assert payload["execution_authority"] == "manual_fpl"
     assert payload["writes_enabled"] is False
-    assert payload["meta"]["source"] == "snapshot"
+    assert payload["meta"]["source"] == "deadline-planning"
 
 
 def test_api_has_no_autopilot_or_telegram_surface() -> None:

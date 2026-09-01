@@ -137,6 +137,17 @@ class SnapshotRepository:
         # temporarily unavailable or the requested artifact is not published.
         return self._read_local(filename)
 
+    def planning(self, season: str, gameweek: int) -> dict[str, Any]:
+        """Read the mutable deadline plan; planning is GCS-only by design."""
+        if self._bucket is None:
+            raise SnapshotNotFoundError(f"planning/{season}/gw{gameweek:02d}/current.json")
+        try:
+            return json.loads(self._bucket.blob(
+                f"planning/{season}/gw{gameweek:02d}/current.json"
+            ).download_as_text(encoding="utf-8"))
+        except Exception as error:
+            raise SnapshotNotFoundError(f"planning/{season}/gw{gameweek:02d}/current.json") from error
+
     def live_league(self, league_id: int) -> dict[str, Any]:
         """Read the complete live snapshot named by its validated manifest."""
         if self._bucket is None:

@@ -20,6 +20,8 @@ $Jobs = [ordered]@{
     "fpl-refresh-fixtures" = "17 * * * *"
     "fpl-capture-journal"  = "17 * * * *"
     "fpl-refresh-gameweek" = "23 * * * *"
+    "fpl-decision-refresh" = "27 * * * *"
+    "fpl-decision-final-window" = "*/15 * * * *"
     "fpl-monitor"          = "*/30 * * * *"
 }
 

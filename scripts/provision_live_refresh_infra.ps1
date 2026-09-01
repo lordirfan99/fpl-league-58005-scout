@@ -32,7 +32,7 @@ gcloud storage buckets add-iam-policy-binding "gs://$Bucket" --member "serviceAc
 gcloud iam service-accounts add-iam-policy-binding $RuntimeServiceAccount --member "serviceAccount:$ProjectNumber-compute@developer.gserviceaccount.com" --role roles/iam.serviceAccountUser --project $ProjectId
 
 # The Cloud Build deployment creates the job. Run this script again afterwards
-# to bind the Scheduler and create its hourly trigger.
+# to bind the Scheduler and create its 30-minute trigger.
 $JobExists = gcloud run jobs list --region $Region --project $ProjectId --filter "metadata.name=$JobName" --format="value(metadata.name)"
 if (-not $JobExists) {
     Write-Output "Provisioned identities. Deploy the production branch, then run this script once more to create the Scheduler trigger."
@@ -47,9 +47,9 @@ gcloud iam service-accounts add-iam-policy-binding $SchedulerServiceAccount --me
 $JobUri = "https://run.googleapis.com/v2/projects/$ProjectId/locations/$Region/jobs/${JobName}:run"
 $ExistingScheduler = gcloud scheduler jobs list --location $Region --project $ProjectId --filter "name:$JobName" --format="value(name)"
 if ($ExistingScheduler) {
-    gcloud scheduler jobs update http $JobName --location $Region --schedule "12 * * * *" --time-zone "Etc/UTC" --uri $JobUri --http-method POST --oauth-service-account-email $SchedulerServiceAccount --oauth-token-scope "https://www.googleapis.com/auth/cloud-platform" --attempt-deadline "180s" --max-retry-attempts 3 --project $ProjectId
+    gcloud scheduler jobs update http $JobName --location $Region --schedule "*/30 * * * *" --time-zone "Etc/UTC" --uri $JobUri --http-method POST --oauth-service-account-email $SchedulerServiceAccount --oauth-token-scope "https://www.googleapis.com/auth/cloud-platform" --attempt-deadline "180s" --max-retry-attempts 3 --project $ProjectId
 } else {
-    gcloud scheduler jobs create http $JobName --location $Region --schedule "12 * * * *" --time-zone "Etc/UTC" --uri $JobUri --http-method POST --oauth-service-account-email $SchedulerServiceAccount --oauth-token-scope "https://www.googleapis.com/auth/cloud-platform" --attempt-deadline "180s" --max-retry-attempts 3 --project $ProjectId
+    gcloud scheduler jobs create http $JobName --location $Region --schedule "*/30 * * * *" --time-zone "Etc/UTC" --uri $JobUri --http-method POST --oauth-service-account-email $SchedulerServiceAccount --oauth-token-scope "https://www.googleapis.com/auth/cloud-platform" --attempt-deadline "180s" --max-retry-attempts 3 --project $ProjectId
 }
 
-Write-Output "Provisioned $JobName and its hourly Cloud Scheduler trigger."
+Write-Output "Provisioned $JobName and its 30-minute Cloud Scheduler trigger."
