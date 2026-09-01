@@ -140,10 +140,13 @@ async def publish_snapshot(
 
 @app.get("/v1/me")
 def me() -> dict[str, int]:
+    # Identity is used by the web client to select the current live GW. Keep
+    # it on the official FPL event feed, not on the latest finalized archive.
+    current = live_fpl.current_gameweek()
     return {
         "team_id": settings.my_team_id,
         "default_league_id": settings.default_league_id,
-        "current_gameweek": _current_gameweek(),
+        "current_gameweek": current,
     }
 
 
@@ -592,7 +595,7 @@ def league_live(league_id: int) -> dict:
     Squads are retained from the latest finalized snapshot when available;
     points, totals and league ranks come from the live FPL standings feed.
     """
-    current = _current_gameweek()
+    current = live_fpl.current_gameweek()
     live = live_fpl.league_standings(league_id)
     previous: dict[str, dict] = {}
     # Use the newest published snapshot as the squad/ownership fallback. This
