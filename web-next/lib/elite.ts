@@ -91,7 +91,7 @@ export function analyzeElite(managers: Manager[]) {
     averageGw: points.reduce((sum, value) => sum + value, 0) / elite.length,
     medianGw: median(points),
     averageTotal: elite.reduce((sum, manager) => sum + manager.total_points, 0) / elite.length,
-    averageValue: elite.filter((manager) => manager.squad_cost > 0).reduce((sum, manager) => sum + manager.squad_cost, 0) / Math.max(1, elite.filter((manager) => manager.squad_cost > 0).length),
+    averageValue: elite.reduce((sum, manager) => sum + (manager.squad_cost || manager.squad.reduce((value, pick) => value + (pick.cost || 0), 0)), 0) / Math.max(1, elite.length),
     averageRank: Math.round(elite.reduce((sum, manager) => sum + manager.overall_rank, 0) / elite.length),
     topScore: Math.max(...points),
   };
