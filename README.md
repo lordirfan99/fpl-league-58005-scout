@@ -26,6 +26,28 @@ gates and explicit owner approval before the runtime registry can activate it.
 - Production API: `https://fpl-scout-api-bztsnhv3ea-uc.a.run.app`
 - Repository owner: `lordirfan99`
 
+## Planned manual-operation migration (not yet implemented)
+
+The owner has decided to make all FPL changes manually in the official FPL
+website/app. The intended end state is a read-only Scout dashboard: it will
+continue to collect official data, produce analytics and recommendations, but
+will not use Telegram, an Autopilot bridge, or any FPL execution mechanism.
+
+This is currently a documented plan, not a completed removal. The detailed,
+implementation-ready checklist is in
+[`docs/MANUAL_OPERATION_MIGRATION_PLAN.md`](docs/MANUAL_OPERATION_MIGRATION_PLAN.md).
+
+For an implementation agent running on this machine, the repository root is:
+
+`C:\Users\irfan\Documents\ChatGPT\FPL MANAGER\fpl-league-58005-scout`
+
+The read-only live-refresh setup script is:
+
+`C:\Users\irfan\Documents\ChatGPT\FPL MANAGER\fpl-league-58005-scout\scripts\provision_live_refresh_infra.ps1`
+
+Do not remove that script during the Telegram/Autopilot cleanup: it provisions
+Cloud Scheduler and the Cloud Run job that keep Analytics hydrated.
+
 ## Operational status
 
 | Item | Current contract |
