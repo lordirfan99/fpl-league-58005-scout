@@ -81,9 +81,11 @@ def main() -> int:
         print(f"WARN  could not read official bootstrap ({error}); skipping cycle checks")
         bootstrap = {"events": []}
     events = bootstrap.get("events", [])
-    current_event = next((event for event in events if event.get("is_current")), None)
     prev_finished = [event for event in events if event.get("finished") and event.get("data_checked")]
     latest_final_event = max((int(event["id"]) for event in prev_finished), default=0)
+    finalized_event = next(
+        (event for event in prev_finished if int(event["id"]) == latest_final_event), None
+    )
 
     # 3. Compare the latest finalized snapshot the API serves against that.
     try:
@@ -104,15 +106,22 @@ def main() -> int:
         archived = set()
 
     if latest_final_event:
-        deadline = _parse_iso((current_event or {}).get("deadline_time"))
-        hours_since_current_deadline = (now - deadline).total_seconds() / 3600 if deadline else None
+        # Measure the grace period from the GW which is missing its finalized
+        # snapshot. Once it is data-checked, the catalog may already identify
+        # the following GW as current; using that deadline would defer alerts
+        # by almost a full gameweek.
+        deadline = _parse_iso((finalized_event or {}).get("deadline_time"))
+        hours_since_finalized_deadline = (now - deadline).total_seconds() / 3600 if deadline else None
 
         snapshot_is_behind = snapshot_gw < latest_final_event
         journal_is_behind = latest_final_event not in archived
 
         # Only escalate to a failure once enough time has passed that the GW is
         # unambiguously done. Before that, a lag is the expected Fri->Sun gap.
-        past_grace = hours_since_current_deadline is None or hours_since_current_deadline > FINALIZE_GRACE_HOURS
+        past_grace = (
+            hours_since_finalized_deadline is None
+            or hours_since_finalized_deadline > FINALIZE_GRACE_HOURS
+        )
         if (snapshot_is_behind or journal_is_behind) and past_grace:
             failures.append(
                 f"GW{latest_final_event} is finished + data-checked but the API still serves "
@@ -122,8 +131,8 @@ def main() -> int:
         elif snapshot_is_behind or journal_is_behind:
             notes.append(
                 f"GW{latest_final_event} finalization pending (normal mid-week gap; "
-                f"{hours_since_current_deadline:.0f}h since deadline)"
-                if hours_since_current_deadline is not None
+                f"{hours_since_finalized_deadline:.0f}h since deadline)"
+                if hours_since_finalized_deadline is not None
                 else f"GW{latest_final_event} finalization pending"
             )
         else:
