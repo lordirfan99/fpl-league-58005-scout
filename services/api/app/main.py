@@ -595,11 +595,15 @@ def league_live(league_id: int) -> dict:
     current = _current_gameweek()
     live = live_fpl.league_standings(league_id)
     previous: dict[str, dict] = {}
-    if current > 1:
+    # Use the newest published snapshot as the squad/ownership fallback. This
+    # also handles an API season rollover where FPL temporarily reports GW1.
+    for prior_gw in range(current, 0, -1):
         try:
-            previous = {str(row.get("entry_id")): row for row in repository.league(league_id, current - 1).get("competitors", [])}
+            previous = {str(row.get("entry_id")): row for row in repository.league(league_id, prior_gw).get("competitors", [])}
+            if previous:
+                break
         except SnapshotNotFoundError:
-            previous = {}
+            continue
     managers = []
     for row in live["managers"]:
         old = previous.get(str(row.get("entry")), {})
