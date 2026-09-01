@@ -140,13 +140,10 @@ async def publish_snapshot(
 
 @app.get("/v1/me")
 def me() -> dict[str, int]:
-    # Identity is used by the web client to select the current live GW. Keep
-    # it on the official FPL event feed, not on the latest finalized archive.
-    current = live_fpl.current_gameweek()
     return {
         "team_id": settings.my_team_id,
         "default_league_id": settings.default_league_id,
-        "current_gameweek": current,
+        "current_gameweek": _current_gameweek(),
     }
 
 
@@ -173,7 +170,10 @@ def my_team(
     league_id: int = Query(default=settings.default_league_id, gt=0),
     gw: int | None = Query(default=None, ge=1, le=38),
 ) -> TeamResponse:
-    gw = gw or _current_gameweek()
+    if gw is None:
+        live_gw = live_fpl.current_gameweek()
+        # A live week may not have a finalized league artifact yet.
+        gw = live_gw if live_gw == _current_gameweek() else _current_gameweek()
     snapshot = _league_or_404(league_id, gw)
     manager = next((item for item in snapshot.get("competitors", []) if item.get("entry_id") == settings.my_team_id), None)
     if manager is None:

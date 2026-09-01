@@ -115,12 +115,13 @@ async function getLeagueDataFromApi(leagueId: number, gameweek?: number): Promis
   type LeaguePayload = { meta?: { generated_at?: string; snapshot_at?: string }; managers: Manager[] };
   type CatalogPayload = { players: Bootstrap["elements"]; teams: Bootstrap["teams"]; events: Bootstrap["events"] };
   const request = requestApi;
-  const resolvedGameweek = gameweek ?? (await request<IdentityPayload>("/v1/me")).current_gameweek ?? DEFAULT_GAMEWEEK;
+  const identity = await request<IdentityPayload>("/v1/me");
   // A league-analysis page must work even when the configured team is not a
   // member of the selected league (for example the public prize league).
   // Treat the personal-team lookup as optional; the league snapshot remains
   // the source of truth for elite/cohort pages.
   const catalog = await request<CatalogPayload>("/v1/catalog");
+  const resolvedGameweek = gameweek ?? catalog.events.find((event) => event.is_current)?.id ?? identity.current_gameweek ?? DEFAULT_GAMEWEEK;
   // League snapshots arrive after the live gameweek advances.  If the
   // selected league has not been collected for the current GW yet, walk back
   // to the newest available snapshot instead of rendering an application
