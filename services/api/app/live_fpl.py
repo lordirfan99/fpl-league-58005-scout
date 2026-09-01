@@ -188,7 +188,11 @@ def hydrate_manager_squads(rows: list[dict[str, Any]], gameweek: int, limit: int
             return int(row["entry"]), [], ""
 
     hydrated = 0
-    with ThreadPoolExecutor(max_workers=8) as pool:
+    # A public league's five-percent cohort can be 90+ squads.  Eight workers
+    # made the live Elite route exceed the dashboard's render budget even
+    # though the FPL calls were healthy.  Sixteen keeps requests bounded while
+    # allowing the factual full-cohort response to arrive in time.
+    with ThreadPoolExecutor(max_workers=max(1, min(16, len(targets)))) as pool:
         futures = [pool.submit(hydrate, row) for row in targets]
         results = [future.result() for future in as_completed(futures)]
     by_id = {entry_id: (picks, captain) for entry_id, picks, captain in results}
