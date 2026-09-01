@@ -71,4 +71,5 @@ jobs:
           scripts/recovery_drill.py
           scripts/monitor_production.py
           scripts/refresh_live_leagues.py
+          scripts/run_scheduled_task.py
           scripts/load_smoke.py

@@ -28,16 +28,16 @@
 
 ## Hourly freshness automation
 
-All schedules run every day, including weekends:
+All schedules run every day, including weekends, on **GCP Cloud Scheduler → Cloud Run Jobs** (`scripts/run_scheduled_task.py`, provisioned by `scripts/provision_scheduled_tasks.ps1`). The matching GitHub Actions workflows are retained as manual `workflow_dispatch` fallbacks only.
 
-| Minute | Workflow | Purpose |
-|---:|---|---|
-| `:17` hourly | `refresh-fixtures.yml` | Validate official FPL bootstrap/fixtures and publish verified live caches directly to GCS |
-| `:23` hourly | `refresh-gameweek.yml` | Detect a newly finished and data-checked GW, then atomically publish league snapshots, journal and model-validation report |
-| `:17` hourly | `capture-journal.yml` | Freeze pre-deadline decision/model/optimizer evidence inside the configured deadline window |
-| Every 30 minutes | `monitor-production.yml` | Check readiness, compact contracts, payload budgets and bounded p50/p95 latency |
+| UTC minute | Cloud Run Job | Fallback workflow | Purpose |
+|---:|---|---|---|
+| `:17` hourly | `fpl-refresh-fixtures` | `refresh-fixtures.yml` | Validate official FPL bootstrap/fixtures and publish verified reference caches to GCS |
+| `:23` hourly | `fpl-refresh-gameweek` | `refresh-gameweek.yml` | Detect a newly finished and data-checked GW, then publish league snapshots + journal to `gs://…/snapshots/` (immutable per GW). The read API resolves those first, so no redeploy per gameweek. |
+| `:17` hourly | `fpl-capture-journal` | `capture-journal.yml` | Freeze pre-deadline decision/model/optimizer evidence inside the configured deadline window |
+| every 30 min | `fpl-monitor` | `monitor-production.yml` | Check readiness, compact contracts, payload budgets and bounded p50/p95 latency |
 
-GitHub schedules can start a few minutes late under platform load. The refresh logic is idempotent: incomplete weeks remain provisional and finalized evidence is never reconstructed later.
+Cloud Scheduler fires reliably on cron (unlike GitHub's throttled schedules). The refresh logic is idempotent: incomplete weeks remain provisional and finalized evidence is never reconstructed later. The `fpl-live-league-refresh` job (`12 * * * *`) for live in-progress standings is unchanged.
 
 ## Dashboard and API changes now live
 

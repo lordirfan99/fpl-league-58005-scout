@@ -1,8 +1,8 @@
 name: Monitor production
 
+# Scheduled on GCP Cloud Scheduler -> Cloud Run Job `fpl-monitor`.
+# Kept here as a manual fallback only.
 on:
-  schedule:
-    - cron: "*/30 * * * *"
   workflow_dispatch:
 
 permissions:

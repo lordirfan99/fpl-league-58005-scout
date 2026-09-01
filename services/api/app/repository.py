@@ -208,5 +208,22 @@ class SnapshotRepository:
             raise ArtifactIntegrityError(f"Journal {season} GW{gameweek} failed hash verification")
         return payload
 
-    def journal_export_path(self, season: str, filename: str) -> Path:
-        return self._path(f"journal/{season}/exports/{filename}")
+    def journal_export_bytes(self, season: str, filename: str) -> bytes:
+        """Return a journal export, preferring the packaged copy then GCS.
+
+        Exports are csv/markdown/json, so this reads the raw object rather than
+        going through the json-decoding _read_remote path.
+        """
+        try:
+            return self._path(f"journal/{season}/exports/{filename}").read_bytes()
+        except SnapshotNotFoundError:
+            pass
+        if self._bucket is not None:
+            try:
+                return self._bucket.blob(f"snapshots/journal/{season}/exports/{filename}").download_as_bytes()
+            except Exception as error:  # pragma: no cover - network/permission failures
+                print(json.dumps({
+                    "level": "warning", "message": "journal_export_remote_read_failed",
+                    "filename": filename, "error_type": type(error).__name__,
+                }), flush=True)
+        raise SnapshotNotFoundError(filename)

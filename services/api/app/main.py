@@ -10,7 +10,7 @@ import uuid
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import ValidationError
 
 from .league_registry import LeagueRegistry
@@ -375,16 +375,20 @@ def journal_gameweek(season: str, gameweek: int) -> dict:
 
 
 @app.get("/v1/journal/{season}/export")
-def journal_export(season: str, filename: str = Query(default="gameweeks.csv")) -> FileResponse:
+def journal_export(season: str, filename: str = Query(default="gameweeks.csv")) -> Response:
     season = _journal_season(season)
     if filename not in {"gameweeks.csv", "players.csv", "manifest.json", "README.md"}:
         raise HTTPException(status_code=400, detail="Unsupported journal export")
     try:
-        path = repository.journal_export_path(season, filename)
+        body = repository.journal_export_bytes(season, filename)
     except SnapshotNotFoundError as error:
         raise HTTPException(status_code=404, detail="Journal export is not available") from error
     media_type = "text/csv" if filename.endswith(".csv") else "text/markdown" if filename.endswith(".md") else "application/json"
-    return FileResponse(path, media_type=media_type, filename=f"fpl-journal-{season}-{filename}")
+    return Response(
+        content=body,
+        media_type=media_type,
+        headers={"content-disposition": f'attachment; filename="fpl-journal-{season}-{filename}"'},
+    )
 
 
 @app.get("/v1/elite/{gw}", response_model=EliteResponse)

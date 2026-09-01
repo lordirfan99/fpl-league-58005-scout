@@ -1,8 +1,8 @@
 name: Capture pre-deadline journal evidence
 
+# Scheduled on GCP Cloud Scheduler -> Cloud Run Job `fpl-capture-journal`.
+# Kept here as a manual fallback only.
 on:
-  schedule:
-    - cron: "17 * * * *"
   workflow_dispatch:
     inputs:
       gameweek:
