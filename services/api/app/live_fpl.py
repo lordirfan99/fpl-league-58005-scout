@@ -177,12 +177,17 @@ def hydrate_manager_squads(rows: list[dict[str, Any]], gameweek: int, limit: int
             captain = ""
             for pick in payload.get("picks", []):
                 player = players.get(int(pick.get("element") or 0), {})
+                selection_position = int(pick.get("position") or 99)
                 element_type = int(player.get("element_type") or 3)
                 position = "GKP" if element_type == 1 else "DEF" if element_type == 2 else "MID" if element_type == 3 else "FWD"
                 name = player.get("web_name", "Unknown")
                 if pick.get("is_captain"):
                     captain = name
-                picks.append({"element": int(pick.get("element") or 0), "name": name, "position": position, "team": teams.get(int(player.get("team") or 0), "—"), "cost": int(player.get("now_cost") or 0) / 10, "multiplier": int(pick.get("multiplier") or 0), "is_captain": bool(pick.get("is_captain")), "is_vice_captain": bool(pick.get("is_vice_captain")), "selected_by": float(player.get("selected_by_percent") or 0)})
+                # The public FPL payload can mark every pick with a positive
+                # multiplier. Selection order is the reliable representation
+                # of the submitted XI: positions 1–11 start, 12–15 are bench.
+                multiplier = (2 if pick.get("is_captain") else 1) if selection_position <= 11 else 0
+                picks.append({"element": int(pick.get("element") or 0), "name": name, "position": position, "team": teams.get(int(player.get("team") or 0), "—"), "cost": int(player.get("now_cost") or 0) / 10, "multiplier": multiplier, "is_captain": bool(pick.get("is_captain")), "is_vice_captain": bool(pick.get("is_vice_captain")), "selected_by": float(player.get("selected_by_percent") or 0)})
             return int(row["entry"]), picks, captain
         except Exception:
             return int(row["entry"]), [], ""

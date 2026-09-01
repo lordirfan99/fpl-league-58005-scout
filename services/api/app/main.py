@@ -21,7 +21,7 @@ from .recommendations import MODEL_VERSION, build_recommendations, cohort_summar
 from .projection_types import PROJECTION_VERSION
 from .projections import build_projections
 from .multiweek_optimizer import MultiWeekContext, OPTIMIZER_VERSION, optimize_multiweek_transfers
-from .repository import ArtifactIntegrityError, SnapshotNotFoundError, SnapshotRepository
+from .repository import ArtifactIntegrityError, LiveSnapshotNotFoundError, SnapshotNotFoundError, SnapshotRepository
 from .schemas import (
     ApiMeta,
     CatalogResponse,
@@ -590,51 +590,28 @@ def transfer_optimizer(
 
 @app.get("/v1/leagues/{league_id}/live")
 def league_live(league_id: int) -> dict:
-    """Return official in-progress standings for the current gameweek.
-
-    Squads are retained from the latest finalized snapshot when available;
-    points, totals and league ranks come from the live FPL standings feed.
-    """
-    current = live_fpl.current_gameweek()
-    live = live_fpl.league_standings(league_id)
-    previous: dict[str, dict] = {}
-    # Use the newest published snapshot as the squad/ownership fallback. This
-    # also handles an API season rollover where FPL temporarily reports GW1.
-    for prior_gw in range(current, 0, -1):
-        try:
-            previous = {str(row.get("entry_id")): row for row in repository.league(league_id, prior_gw).get("competitors", [])}
-            if previous:
-                break
-        except SnapshotNotFoundError:
-            continue
-    # The FPL standings feed is the authority for the current league
-    # population.  Snapshots only enrich a current manager; they must not add
-    # historical rows that no longer belong to this league.
-    expected_total = int(live.get("count") or 0)
-    elite_target = max(1, math.ceil(expected_total * 0.05))
-    live_fpl.hydrate_manager_squads(live["managers"], current, elite_target)
-    live_managers = []
-    for row in live["managers"]:
-        old = previous.get(str(row.get("entry")), {})
-        live_managers.append({
-            **old,
-            "entry_id": int(row.get("entry") or 0),
-            "entry_name": row.get("entry_name") or old.get("entry_name", ""),
-            "player_name": row.get("player_name") or old.get("player_name", ""),
-            "gw_points": int(row.get("event_total") or 0),
-            "total_points": int(row.get("total") or 0),
-            "league_rank": int(row.get("rank") or 0),
-            "overall_rank": int(old.get("overall_rank") or row.get("rank") or 0),
-            # A historical squad is not a live squad.  Only expose official
-            # current picks so the Elite analysis cannot present old lineups
-            # as today's ownership or captaincy.
-            "squad": row.get("_live_squad", []),
-            "squad_cost": float(sum(pick.get("cost", 0) for pick in row.get("_live_squad", []))),
-            "captain": row.get("_live_captain", ""),
-            "transfers_made": int(old.get("transfers_made") or 0),
-        })
-    hydrated_count = sum(1 for manager in live_managers if manager["squad"])
-    return {"meta": {"source": "official-fpl-live", "snapshot_gameweek": current, "quality_status": "complete-live-standings", "generated_at": live["fetched_at"], "pages_fetched": live.get("pages_fetched", 0)}, "league_id": league_id, "gameweek": current, "count": len(live_managers), "declared_count": expected_total, "hydration_percent": round(hydrated_count / max(1, expected_total) * 100, 1), "managers": live_managers, "provisional": True}
+    """Return a complete, validated background-collected live snapshot."""
+    try:
+        snapshot = repository.live_league(league_id)
+    except LiveSnapshotNotFoundError as error:
+        raise HTTPException(status_code=503, detail="live_snapshot_unavailable") from error
+    expected = int(snapshot["expected_count"])
+    return {
+        "meta": {
+            "source": "official-fpl-live-snapshot",
+            "snapshot_gameweek": snapshot["gameweek"],
+            "quality_status": "complete",
+            "generated_at": snapshot["captured_at"],
+            "pages_fetched": snapshot.get("pages_fetched", 0),
+        },
+        "league_id": league_id,
+        "gameweek": snapshot["gameweek"],
+        "count": expected,
+        "declared_count": expected,
+        "hydration_percent": 100.0,
+        "managers": snapshot["managers"],
+        "provisional": True,
+    }
 
 
 @app.get("/v1/catalog/compact")

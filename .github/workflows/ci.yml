@@ -70,4 +70,5 @@ jobs:
           scripts/frozen_artifacts.py
           scripts/recovery_drill.py
           scripts/monitor_production.py
+          scripts/refresh_live_leagues.py
           scripts/load_smoke.py
