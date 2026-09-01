@@ -36,6 +36,25 @@ def test_current_gameweek_is_discovered() -> None:
     assert response.json()["gameweek"] == identity["current_gameweek"]
 
 
+def test_current_gameweek_falls_back_from_provisional_snapshot(monkeypatch) -> None:
+    finalized = main.repository.league(58005, 1)
+
+    class Repository:
+        @staticmethod
+        def bootstrap() -> dict:
+            return {"events": [{"id": 2, "is_current": True}]}
+
+        @staticmethod
+        def league(league_id: int, gameweek: int) -> dict:
+            assert league_id == 58005
+            if gameweek == 2:
+                return {"gw": 2, "fetched_at": "2026-09-01T00:00:00Z", "competitors": []}
+            return finalized
+
+    monkeypatch.setattr(main, "repository", Repository())
+    assert main._current_gameweek() == 1
+
+
 def test_elite_and_recommendation_contracts() -> None:
     league = client.get("/v1/leagues/58005?gw=1")
     elite = client.get("/v1/elite/1?league_id=58005")

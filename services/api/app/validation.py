@@ -88,6 +88,8 @@ def validate_manager_squad(manager: dict[str, Any] | None) -> list[str]:
 def snapshot_quality(snapshot: dict[str, Any]) -> tuple[str, list[str]]:
     issues: list[str] = []
     managers = snapshot.get("competitors") or []
+    if not managers:
+        issues.append("competitors_empty")
     try:
         declared = int(snapshot.get("total_entries") or len(managers))
     except (TypeError, ValueError):

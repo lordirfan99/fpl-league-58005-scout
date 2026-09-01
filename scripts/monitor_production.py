@@ -22,7 +22,7 @@ def main() -> int:
     status, body, _ = fetch(f"{API}/ready", 50_000)
     readiness = json.loads(body)
     assert status == 200 and readiness["ready"] is True, readiness
-    status, body, headers = fetch(f"{API}/v1/leagues/58005/summary?gw=1&page=1&page_size=50", 250_000)
+    status, body, headers = fetch(f"{API}/v1/leagues/58005/summary?page=1&page_size=50", 250_000)
     summary = json.loads(body)
     assert status == 200 and len(summary["managers"]) <= 50
     assert all("squad" not in manager for manager in summary["managers"])

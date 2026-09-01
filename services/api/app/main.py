@@ -253,9 +253,18 @@ def league_summary(
             "code": "snapshot_not_finalized", "league_id": league_id, "gameweek": gw,
             "quality_status": quality_status, "quality_issues": quality_issues[:10],
         })
-    summaries = [ManagerSummary.model_validate(row) for row in sorted(
-        snapshot.get("competitors", []), key=lambda item: item.get("league_rank") or 10**12
-    )]
+    try:
+        summaries = [ManagerSummary.model_validate(row) for row in sorted(
+            snapshot.get("competitors", []), key=lambda item: item.get("league_rank") or 10**12
+        )]
+    except ValidationError as error:
+        raise HTTPException(status_code=409, detail={
+            "code": "snapshot_not_finalized", "league_id": league_id, "gameweek": gw,
+            "quality_status": "invalid", "quality_issues": [
+                f"schema:{'.'.join(str(part) for part in issue['loc'])}:{issue['type']}"
+                for issue in error.errors(include_input=False)[:10]
+            ],
+        }) from error
     term = q.strip().casefold()
     filtered = [row for row in summaries if not term or term in (
         f"{row.entry_name} {row.player_name} {row.entry_id} {row.league_rank}".casefold()
@@ -288,9 +297,18 @@ def league_directory(
             "code": "snapshot_not_finalized", "quality_status": quality_status,
             "quality_issues": quality_issues[:10], "gameweek": gw,
         })
-    managers = [ManagerSummary.model_validate(row).model_dump() for row in sorted(
-        snapshot.get("competitors", []), key=lambda item: item.get("league_rank") or 10**12
-    )]
+    try:
+        managers = [ManagerSummary.model_validate(row).model_dump() for row in sorted(
+            snapshot.get("competitors", []), key=lambda item: item.get("league_rank") or 10**12
+        )]
+    except ValidationError as error:
+        raise HTTPException(status_code=409, detail={
+            "code": "snapshot_not_finalized", "league_id": league_id, "gameweek": gw,
+            "quality_status": "invalid", "quality_issues": [
+                f"schema:{'.'.join(str(part) for part in issue['loc'])}:{issue['type']}"
+                for issue in error.errors(include_input=False)[:10]
+            ],
+        }) from error
     return {"meta": _meta(snapshot).model_dump(mode="json"), "league_id": league_id,
             "gameweek": gw, "count": len(managers), "managers": managers}
 
@@ -749,13 +767,26 @@ def _current_gameweek() -> int:
     current = next((event for event in events if event.get("is_current")), None)
     if current:
         candidate = int(current["id"])
+    else:
+        next_event = next((event for event in events if event.get("is_next")), None)
+        if next_event:
+            candidate = max(1, int(next_event["id"]) - 1)
+        else:
+            finished = [int(event["id"]) for event in events if event.get("finished")]
+            candidate = max(finished, default=1)
+    for gameweek in range(candidate, 0, -1):
         try:
-            repository.league(settings.default_league_id, candidate)
-            return candidate
+            snapshot = repository.league(settings.default_league_id, gameweek)
         except SnapshotNotFoundError:
-            return max(1, candidate - 1)
-    next_event = next((event for event in events if event.get("is_next")), None)
-    if next_event:
-        return max(1, int(next_event["id"]) - 1)
-    finished = [int(event["id"]) for event in events if event.get("finished")]
-    return max(finished, default=1)
+            continue
+        if snapshot_quality(snapshot)[0] != "valid":
+            continue
+        try:
+            managers = snapshot.get("competitors", [])
+            if managers:
+                for manager in managers:
+                    Manager.model_validate(manager)
+                return gameweek
+        except ValidationError:
+            continue
+    return max(1, candidate)

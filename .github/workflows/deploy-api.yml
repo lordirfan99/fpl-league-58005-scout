@@ -55,6 +55,10 @@ jobs:
           with urllib.request.urlopen(base + "/ready", timeout=60) as response:
               readiness = json.load(response)
           assert readiness["ready"] is True, readiness
+          with urllib.request.urlopen(base + "/v1/leagues/58005/summary?page=1&page_size=50", timeout=60) as response:
+              summary = json.load(response)
+          assert summary["managers"] and len(summary["managers"]) <= 50, summary
+          assert all("squad" not in row for row in summary["managers"]), summary
           with urllib.request.urlopen(base + "/v1/me", timeout=30) as response:
               identity = json.load(response)
           gw = identity["current_gameweek"]
