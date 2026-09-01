@@ -2,7 +2,7 @@ name: Refresh completed gameweek
 
 on:
   schedule:
-    - cron: "23 */4 * * *"
+    - cron: "23 * * * *"
   workflow_dispatch:
     inputs:
       gameweek:
@@ -66,7 +66,9 @@ jobs:
           PY
       - name: Fetch both tracked leagues
         if: steps.event.outputs.refresh == 'true'
-        run: python scripts/fetch_gw_data_fixed.py --gw "${{ steps.event.outputs.gw }}" --league 58005 131997 --max 3000 --workers 16
+        run: |
+          python scripts/fetch_fixture_horizon.py
+          python scripts/fetch_gw_data_fixed.py --gw "${{ steps.event.outputs.gw }}" --league 58005 131997 --max 3000 --workers 16
       - name: Generate league and elite reports
         if: steps.event.outputs.refresh == 'true'
         run: |

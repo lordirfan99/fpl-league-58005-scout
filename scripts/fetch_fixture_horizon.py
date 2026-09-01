@@ -21,9 +21,43 @@ def get_json(path: str):
         return json.load(response)
 
 
+def validate_official_payload(bootstrap: object, fixtures: object) -> None:
+    """Reject empty, partial or synthetic-looking payloads before publication."""
+    if not isinstance(bootstrap, dict) or not isinstance(fixtures, list):
+        raise RuntimeError("Official FPL payload has the wrong top-level shape")
+    players = bootstrap.get("elements")
+    teams = bootstrap.get("teams")
+    events = bootstrap.get("events")
+    positions = bootstrap.get("element_types")
+    if not isinstance(players, list) or len(players) < 400:
+        raise RuntimeError(f"Official player catalogue is implausibly small: {len(players or [])}")
+    if not isinstance(teams, list) or len(teams) != 20:
+        raise RuntimeError(f"Official team catalogue must contain 20 teams: {len(teams or [])}")
+    if not isinstance(events, list) or len(events) != 38:
+        raise RuntimeError(f"Official event catalogue must contain 38 gameweeks: {len(events or [])}")
+    if not isinstance(positions, list) or len(positions) != 4:
+        raise RuntimeError("Official position catalogue must contain four positions")
+    if len(fixtures) < 300:
+        raise RuntimeError(f"Official fixture catalogue is implausibly small: {len(fixtures)}")
+    team_ids = {team.get("id") for team in teams if isinstance(team, dict)}
+    if any(
+        not isinstance(row, dict)
+        or row.get("id") is None
+        or row.get("team_h") not in team_ids
+        or row.get("team_a") not in team_ids
+        or row.get("team_h_difficulty") not in range(1, 6)
+        or row.get("team_a_difficulty") not in range(1, 6)
+        for row in fixtures
+    ):
+        raise RuntimeError("Official fixture catalogue contains an invalid or incomplete row")
+    if any(not row.get("web_name") or row.get("id") is None for row in players):
+        raise RuntimeError("Official player catalogue contains an unnamed or unkeyed row")
+
+
 def main() -> None:
     bootstrap = get_json("bootstrap-static/")
     fixtures = get_json("fixtures/")
+    validate_official_payload(bootstrap, fixtures)
     fetched_at = datetime.now(timezone.utc).isoformat()
     bootstrap_hash = hashlib.sha256(
         json.dumps(bootstrap, sort_keys=True, separators=(",", ":")).encode()
@@ -52,8 +86,14 @@ def main() -> None:
         )
 
     payload = {
+        "schema_version": 2,
         "fetched_at": fetched_at,
         "source": "official-fpl-api",
+        "source_url": f"{FPL_BASE}/fixtures/",
+        "content_sha256": hashlib.sha256(
+            json.dumps(fixtures, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest(),
+        "fixture_count": len(fixtures),
         "gameweeks": gameweeks,
     }
     target = DATA_DIR / "fixtures_cache.json"

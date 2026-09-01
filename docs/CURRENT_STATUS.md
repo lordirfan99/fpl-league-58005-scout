@@ -1,80 +1,69 @@
 # FPL Scout Control Centre — current status
 
-**Status date:** 31 August 2026  
-**Branch:** `master`  
-**Status baseline:** `d798b38 data: refresh official FPL fixtures`, plus the API provisional-snapshot guard documented below
+**Status date:** 1 September 2026
 
-## Production URLs
+**Branch:** `master`
 
-| Service | URL | Current verification |
+**Dashboard revision:** `1cc801fe6e5644c2b51fdeba901c1a5579a3690b`
+
+**API revision:** `7c352cee17e9e8e26c17624b0bc393b74abdf125`
+
+## Production services
+
+| Service | URL | Verified state |
 |---|---|---|
-| Dashboard | https://fpl-scout-intelligence.netlify.app | Live Netlify production deployment; `/my-team`, `/journal` and `/settings` return HTTP 200 |
-| Read API | https://fpl-scout-api-bztsnhv3ea-uc.a.run.app | Cloud Run health returns HTTP 200 and `version=4.0.0` |
-| Autopilot bridge | https://sportmania.duckdns.org/fpl-autopilot/ | Read-only bridge used for plan context; execution remains Telegram-only |
+| Dashboard | https://fpl-scout-intelligence.netlify.app | Netlify production deploy is `ready`; compact league UI is live |
+| Read API | https://fpl-scout-api-bztsnhv3ea-uc.a.run.app | `/ready` is true and exposes the exact Git revision |
+| Autopilot bridge | https://sportmania.duckdns.org/fpl-autopilot/ | Read-only; Telegram remains execution authority |
 
-## What is live now
+## Actual official data, finalized history and planning
 
-The dashboard uses a hybrid data model:
+- Current player, team, event and fixture data is fetched from the official FPL `bootstrap-static` and `fixtures` APIs. The hourly publisher rejects payloads with the wrong shape, fewer than 400 players, anything other than 20 teams/38 events/four positions, fewer than 300 fixtures, invalid team IDs or placeholder difficulty values.
+- Each accepted official payload carries its real fetch time, source URL and SHA-256 content identity. A failed validation publishes nothing; the dashboard keeps the previous verified cache.
+- Live personal-team state comes from the official FPL API through the server-side `/v1/live/team` reader.
+- League research uses only the latest structurally complete, finalized snapshot. If FPL is on GW2 while GW2 league data is incomplete, an unqualified league read returns finalized GW1.
+- An explicit incomplete request such as GW2 returns `409 snapshot_not_finalized`; it never silently appears as finalized data.
+- Derived xPts and NET-EV are labelled model research, not official results. No placeholder score is substituted for missing official data.
+- Finalized league and journal records remain immutable and hash-verified. Hourly refreshes cannot overwrite them.
 
-1. **Live FPL feed** — the API server polls the official FPL API for the configured team. Results are cached for 15–30 seconds and exposed through `GET /v1/live/team`.
-2. **League snapshots** — completed-gameweek league standings, competitor squads and analysis remain snapshot-backed. This prevents mutable live data from rewriting research history.
-3. **Journal archive** — a Gameweek is archived only after FPL reports `finished=true` and `data_checked=true`. Journal records include provenance, quality checks, prediction evidence and a content hash.
-4. **Fallback** — if FPL is unavailable, the dashboard uses the newest valid captured snapshot and labels it as historical/stale instead of pretending it is live.
+## Hourly freshness automation
 
-The live endpoint currently reports:
+All schedules run every day, including weekends:
 
-- source: `official-fpl-live`
-- status: `live`
-- current Gameweek: `GW2`
-- squad rows: `15`
-- provisional: `true` until FPL finalises the Gameweek
+| Minute | Workflow | Purpose |
+|---:|---|---|
+| `:17` hourly | `refresh-fixtures.yml` | Validate official FPL bootstrap/fixtures and publish verified live caches directly to GCS |
+| `:23` hourly | `refresh-gameweek.yml` | Detect a newly finished and data-checked GW, then atomically publish league snapshots, journal and model-validation report |
+| `:17` hourly | `capture-journal.yml` | Freeze pre-deadline decision/model/optimizer evidence inside the configured deadline window |
+| Every 30 minutes | `monitor-production.yml` | Check readiness, compact contracts, payload budgets and bounded p50/p95 latency |
 
-## Current data state
+GitHub schedules can start a few minutes late under platform load. The refresh logic is idempotent: incomplete weeks remain provisional and finalized evidence is never reconstructed later.
 
-- **GW1:** captured and available as the completed league/journal baseline.
-- **GW2:** the personal 15-player team is available from the live FPL feed.
-- **GW2 league snapshot:** not yet available in the read API, so league rank, elite behaviour and completed-GW comparisons correctly remain on the last captured snapshot until the collector runs after lock.
-- **Next planning target:** derived from the latest completed review and the next FPL deadline; it must not be confused with a completed-GW result.
+## Dashboard and API changes now live
 
-## Dashboard behaviour
+- League standings are server-paginated and searchable; only 50 compact rows are sent at a time.
+- Manager comparison uses a compact directory and loads only the two selected full squads.
+- A single lineup is loaded on demand from the league table.
+- Transfers include a read-only `net-ev-multiweek-v1` research table. It evaluates legal 1–3 transfer plans across 2–6 GWs with hit cost, saved-transfer opportunity value, budget, three-per-club, uncertainty and supported chip modes.
+- `api-meta-v2` exposes data version/hash, cutoff, feature/model version and code revision.
+- External V4.2 bridge artifacts are SHA-256 identified in new captures. The generator source remains external and is labelled honestly.
 
-- **My Team** prefers the live team feed and displays provisional points/rank language while GW2 is in progress.
-- **League, Elite, Transfers and Analytics** use a selected, captured Gameweek so comparisons remain internally consistent.
-- **Journal** shows all 38 Gameweeks, with completed, live and upcoming states separated.
-- **Settings** stores local display preferences (league, timezone, landing page, reminders and compact tables).
-- **Season weeks** navigation links directly to the journal review for any GW1–GW38.
+## Verification evidence
 
-## Automation and deployment
+- API tests before the hourly-source guard: **57 passed**; official-source guard tests add one valid and five rejection cases.
+- Next.js typecheck, production build and dependency audit: **passed**.
+- Browser checks: **19 applicable passed, 1 intentional desktop skip** on both local production build and live Netlify.
+- Automated accessibility: no serious/critical WCAG 2 A/AA violations on tested critical pages.
+- Frozen-artifact manifest: **5 verified**; recovery drill restored and re-verified all 5 in isolation.
+- Production compact summary: **11,620 bytes**, 50 rows, no squads, stable data hash.
+- Production dashboard `/league`: **143,624 bytes**, down from approximately 10.3 MB.
+- Bounded production smoke: API p95 **1.38 s**; dashboard p95 **4.26 s**; zero errors in the sampled run.
+- Python and npm high-severity dependency audits: **no known vulnerabilities found** at verification time.
 
-- Netlify deploys `web-next` from `master`.
-- GitHub Actions workflow `deploy-api.yml` builds and deploys the read API to Cloud Run.
-- GitHub Actions workflow `refresh-gameweek.yml` checks every four hours for a newly finished/data-checked Gameweek, collects both tracked leagues, validates the payload and commits snapshots atomically.
-- The live FPL reader is server-side only; the browser never calls the official FPL API directly.
-- No dashboard endpoint can write transfers, captains or lineups. Telegram remains the execution authority.
+## Honest remaining limitations
 
-## Verification performed for commit `6d75594`
+1. Model promotion evidence is still immature. GW1 has no frozen pre-deadline prediction, and at least six paired finalized weeks are required before review eligibility.
+2. The external VM V4.2 generator source is not vendored here. Its outputs are immutable/hash-traceable, but independent reproduction still requires that private source.
+3. Automated accessibility checks do not replace manual screen-reader and keyboard review across every browser/device combination.
 
-- API test suite: **25 passed**.
-- Next.js typecheck: **passed**.
-- Next.js production build: **passed**.
-- Cloud Run deployment workflow: **passed**, including production API verification.
-- `GET /health`: HTTP 200.
-- `GET /v1/live/team`: HTTP 200 with 15 live picks for GW2.
-- `GET /v1/leagues/58005?gw=1`: HTTP 200.
-- `GET /v1/leagues/58005?gw=2`: currently unavailable because the GW2 league snapshot has not been collected yet; this is expected during the live/provisional phase.
-
-## 31 August production audit
-
-- Scheduled fixture refresh: **passed**.
-- Scheduled pre-deadline journal capture: **passed**.
-- Scheduled completed-Gameweek check: **passed** and correctly left GW1 as the latest finalized archive because GW2 is still provisional.
-- API validation regression suite after the provisional-snapshot guard: **32 passed**.
-- The GW2 provisional league payload is rejected with `409 snapshot_not_finalized`; it no longer reaches response-model validation as an opaque HTTP 500.
-- Dashboard `/my-team`, `/journal` and `/settings`: HTTP 200.
-
-## Known limitations and next operational steps
-
-1. The live endpoint currently covers the configured personal team. Live league-wide polling is intentionally not enabled because it would require paginating the league and fetching hundreds of manager squads, creating avoidable load and inconsistent mid-gameweek comparisons.
-2. After GW2 is locked and data-checked, run or allow `refresh-gameweek.yml` to publish the GW2 snapshots and journal record.
-3. Confirm the next refresh with `/v1/leagues/58005?gw=2`, `/v1/journal?season=2026-27` and the dashboard's Journal page.
-4. Keep the live layer for current decisions and the snapshot layer for auditability; do not merge provisional live rows into the historical journal.
+These are evidence or external-source limitations, not open release-breaking engineering defects.
