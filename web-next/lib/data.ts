@@ -151,12 +151,12 @@ async function getLeagueDataFromApi(leagueId: number, gameweek?: number): Promis
   // For the current view, ask the live read model first. The catalog is a
   // reference snapshot and can lag the official FPL gameweek transition.
   let liveIdentity: { gameweek: number } | null = null;
-  // The user's own league has a small enough official live cohort to render
-  // within the dashboard budget.  Public research leagues can contain many
-  // thousands of entries; use their latest finalized snapshot by default so
-  // the page renders reliably and labels the data honestly instead of timing
-  // out while FPL hydrates every live squad.
-  const useLiveReadModel = gameweek === undefined && leagueId === DEFAULT_LEAGUE_ID;
+  // Live league reads are complete, validated background snapshots. They are
+  // safe for every tracked league and must take precedence over an older
+  // finalized snapshot whenever the user has not explicitly selected a GW.
+  // This request does not call FPL: it reads the Cloud Run collector's latest
+  // immutable snapshot through the API.
+  const useLiveReadModel = gameweek === undefined;
   if (useLiveReadModel) {
     try {
       liveIdentity = await request<{ gameweek: number }>(`/v1/live/team?league_id=${leagueId}`);
@@ -215,7 +215,7 @@ async function getLeagueDataFromApi(leagueId: number, gameweek?: number): Promis
       isLive: liveProvisional,
       isFinal: !liveProvisional,
       stale: false,
-      quality: liveProvisional ? "partial" : "valid",
+      quality: "valid",
       hydration: { loaded: league.managers.filter((manager) => manager.squad?.length > 0).length, expected: league.managers.length, percent: Math.round(league.managers.filter((manager) => manager.squad?.length > 0).length / Math.max(1, league.managers.length) * 100) },
     } satisfies DataStatus,
   };
