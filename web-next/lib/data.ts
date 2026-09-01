@@ -124,7 +124,13 @@ async function getLeagueDataFromApi(leagueId: number, gameweek?: number): Promis
   // For the current view, ask the live read model first. The catalog is a
   // reference snapshot and can lag the official FPL gameweek transition.
   let liveIdentity: { gameweek: number } | null = null;
-  if (gameweek === undefined) {
+  // The user's own league has a small enough official live cohort to render
+  // within the dashboard budget.  Public research leagues can contain many
+  // thousands of entries; use their latest finalized snapshot by default so
+  // the page renders reliably and labels the data honestly instead of timing
+  // out while FPL hydrates every live squad.
+  const useLiveReadModel = gameweek === undefined && leagueId === DEFAULT_LEAGUE_ID;
+  if (useLiveReadModel) {
     try {
       liveIdentity = await request<{ gameweek: number }>(`/v1/live/team?league_id=${leagueId}`);
     } catch {
@@ -150,7 +156,7 @@ async function getLeagueDataFromApi(leagueId: number, gameweek?: number): Promis
       // A current GW commonly has no finalized snapshot yet. Depending on
       // API revision this is reported as either 404 (not collected) or 409
       // (provisional/not finalized); both must use the official live route.
-      if (candidate === resolvedGameweek && [404, 409].includes(error.status)) {
+      if (useLiveReadModel && candidate === resolvedGameweek && [404, 409].includes(error.status)) {
         const live = await request<LeaguePayload & { gameweek: number; provisional?: boolean }>(`/v1/leagues/${leagueId}/live`).catch(() => null);
         if (live?.managers?.length) {
           league = live;
