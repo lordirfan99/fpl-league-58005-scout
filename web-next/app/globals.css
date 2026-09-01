@@ -113,3 +113,11 @@ html,body{max-width:100%;overflow-x:hidden}
 
 /* The optional Netlify status badge overlaps the mobile More control. */
 #nl-badge-frame{pointer-events:none!important}
+
+/* Resilient optional-data states and compact mobile decision evidence. */
+.optimizer-unavailable{display:flex;align-items:center;justify-content:space-between;gap:20px;border-color:rgba(0,190,130,.24);background:linear-gradient(135deg,#effcf7,#fff)}
+.optimizer-unavailable>div{min-width:0}.optimizer-unavailable span{color:var(--mint-dark);font-size:8px;font-weight:900;letter-spacing:.11em}.optimizer-unavailable h2{margin:5px 0;color:var(--purple)}.optimizer-unavailable p{max-width:720px;margin:0;color:var(--muted);font-size:9px;line-height:1.55}.optimizer-unavailable a{flex:0 0 auto;padding:10px 12px;border-radius:9px;background:var(--purple);color:#fff;font-size:9px;font-weight:850}
+.execution-meta{display:grid;grid-template-columns:minmax(0,180px) minmax(0,1fr);gap:8px;margin:12px 0}
+.execution-meta>div{min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--surface-soft)}.execution-meta span,.execution-meta code{display:block}.execution-meta span{margin-bottom:4px;color:var(--muted);font-size:7px;font-weight:850;text-transform:uppercase}.execution-meta code{overflow:hidden;color:var(--purple);font-size:9px;text-overflow:ellipsis;white-space:nowrap}
+.uncertainty-note{display:grid;grid-template-columns:auto auto minmax(0,1fr);align-items:center}.uncertainty-note>span:last-child{color:var(--muted);font-size:9px;line-height:1.45}
+@media(max-width:720px){.optimizer-unavailable{align-items:flex-start;flex-direction:column}.optimizer-unavailable a{width:100%;text-align:center}.execution-meta{grid-template-columns:1fr}.uncertainty-note{grid-template-columns:1fr;gap:5px}.uncertainty-note strong{font-size:18px}.validation-grid>div{min-width:0}.validation-grid span{overflow-wrap:anywhere}}

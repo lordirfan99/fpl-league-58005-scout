@@ -34,7 +34,7 @@ def current_gameweek() -> int:
     return int((current or {}).get("id") or 1)
 
 
-def team(entry_id: int, gameweek: int) -> dict[str, Any]:
+def team(entry_id: int, gameweek: int, league_id: int | None = None) -> dict[str, Any]:
     """Read the public, mutable FPL team state for one entry.
 
     This is intentionally a live read model. It is never used to rewrite the
@@ -60,6 +60,14 @@ def team(entry_id: int, gameweek: int) -> dict[str, Any]:
             "points": int(player.get("event_points") or 0),
             "now_cost": int(player.get("now_cost") or 0),
         })
+    live_points = history_row.get("event_total")
+    if live_points is None:
+        # During a live Gameweek FPL does not always publish the history row
+        # yet. The official player event totals and the saved pick
+        # multipliers still provide the manager's current provisional score.
+        live_points = sum(pick["points"] * pick["multiplier"] for pick in picks)
+    classic_leagues = entry.get("leagues", {}).get("classic", [])
+    league = next((row for row in classic_leagues if int(row.get("id") or 0) == league_id), None)
     return {
         "source": "official-fpl-live",
         "status": "live",
@@ -76,7 +84,15 @@ def team(entry_id: int, gameweek: int) -> dict[str, Any]:
             "transfers_made": history_row.get("event_transfers") or 0,
             "transfers_cost": history_row.get("event_transfers_cost") or 0,
         },
+        "league": ({
+            "id": int(league.get("id") or 0),
+            "name": league.get("name", ""),
+            "entry_rank": int(league.get("entry_rank") or 0),
+            "entry_last_rank": int(league.get("entry_last_rank") or 0),
+            "rank_count": int(league.get("rank_count") or 0),
+        } if league else None),
         "picks": picks,
-        "points": history_row.get("event_total"),
+        "points": int(live_points),
+        "points_source": "history" if history_row.get("event_total") is not None else "official-live-picks",
         "provisional": not bool((next((e for e in bootstrap.get("events", []) if int(e.get("id") or 0) == gameweek), {}) or {}).get("finished")),
     }

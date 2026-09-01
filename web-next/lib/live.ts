@@ -9,14 +9,17 @@ export type LiveTeam = {
   fetched_at: string;
   provisional: boolean;
   entry: { id: number; entry_name: string; player_name: string; overall_rank: number; total_points: number; value: number; bank: number; transfers_made: number; transfers_cost: number };
+  league: { id: number; name: string; entry_rank: number; entry_last_rank: number; rank_count: number } | null;
   picks: Array<{ element: number; position: number; multiplier: number; is_captain: boolean; is_vice_captain: boolean; web_name: string; team: number; points: number; now_cost: number }>;
-  points: number | null;
+  points: number;
+  points_source: "history" | "official-live-picks";
 };
 
-export async function getLiveTeam(gameweek?: number): Promise<LiveTeam | null> {
-  const query = gameweek ? `?gw=${gameweek}` : "";
+export async function getLiveTeam(gameweek?: number, leagueId = 58005): Promise<LiveTeam | null> {
+  const params = new URLSearchParams({ league_id: String(leagueId) });
+  if (gameweek) params.set("gw", String(gameweek));
   try {
-    const response = await fetch(`${API_BASE}/v1/live/team${query}`, { cache: "no-store" });
+    const response = await fetch(`${API_BASE}/v1/live/team?${params}`, { cache: "no-store" });
     if (!response.ok) return null;
     return await response.json() as LiveTeam;
   } catch {

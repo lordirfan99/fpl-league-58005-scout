@@ -148,7 +148,10 @@ def me() -> dict[str, int]:
 
 
 @app.get("/v1/live/team")
-def live_team(gw: int | None = Query(default=None, ge=1, le=38)) -> dict:
+def live_team(
+    gw: int | None = Query(default=None, ge=1, le=38),
+    league_id: int | None = Query(default=settings.default_league_id, gt=0),
+) -> dict:
     """Return the current public FPL team state with a short server cache.
 
     Live data is deliberately separate from snapshot-backed endpoints. It is
@@ -157,7 +160,7 @@ def live_team(gw: int | None = Query(default=None, ge=1, le=38)) -> dict:
     """
     target = gw or live_fpl.current_gameweek()
     try:
-        return live_fpl.team(settings.my_team_id, target)
+        return live_fpl.team(settings.my_team_id, target, league_id)
     except Exception as error:
         raise HTTPException(status_code=503, detail=f"Official FPL live data unavailable: {error}") from error
 

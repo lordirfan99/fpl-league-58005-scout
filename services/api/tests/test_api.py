@@ -193,15 +193,37 @@ def test_catalog_exposes_official_fpl_entities() -> None:
 
 def test_live_team_endpoint_is_separate_from_snapshots(monkeypatch) -> None:
     monkeypatch.setattr(main.live_fpl, "current_gameweek", lambda: 2)
-    monkeypatch.setattr(main.live_fpl, "team", lambda entry_id, gameweek: {
+    monkeypatch.setattr(main.live_fpl, "team", lambda entry_id, gameweek, league_id: {
         "source": "official-fpl-live", "status": "live", "gameweek": gameweek,
-        "entry": {"id": entry_id}, "picks": [], "provisional": True,
+        "entry": {"id": entry_id}, "league": {"id": league_id}, "picks": [], "provisional": True,
     })
     response = client.get("/v1/live/team")
     assert response.status_code == 200
     assert response.json()["source"] == "official-fpl-live"
     assert response.json()["status"] == "live"
     assert response.json()["gameweek"] == 2
+    assert response.json()["league"]["id"] == 58005
+
+
+def test_live_team_calculates_current_score_and_league_rank_from_official_payload(monkeypatch) -> None:
+    payloads = {
+        "bootstrap-static/": {
+            "events": [{"id": 2, "finished": False}],
+            "elements": [{"id": 10, "web_name": "Captain", "team": 1, "event_points": 7, "now_cost": 80}],
+        },
+        "entry/99/": {
+            "name": "Test FC", "player_first_name": "Test", "player_last_name": "Manager",
+            "summary_overall_rank": 1234, "summary_overall_points": 88,
+            "leagues": {"classic": [{"id": 58005, "name": "Test League", "entry_rank": 12, "entry_last_rank": 20, "rank_count": 100}]},
+        },
+        "entry/99/event/2/picks/": {"picks": [{"element": 10, "position": 1, "multiplier": 2, "is_captain": True, "is_vice_captain": False}]},
+        "entry/99/history/": {"current": []},
+    }
+    monkeypatch.setattr(main.live_fpl, "_get", lambda path, ttl=30: payloads[path])
+    result = main.live_fpl.team(99, 2, 58005)
+    assert result["points"] == 14
+    assert result["points_source"] == "official-live-picks"
+    assert result["league"]["entry_rank"] == 12
 
 
 def test_fixture_horizon_is_populated() -> None:

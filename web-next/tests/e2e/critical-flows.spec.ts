@@ -2,6 +2,11 @@ import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
 const routes = ["/my-team", "/assistant", "/planner", "/journal", "/settings"];
+const dashboardRoutes = [
+  "/my-team", "/assistant", "/autopilot", "/v5-lab", "/model-compare", "/journal", "/planner",
+  "/league?league=58005", "/league?league=131997", "/elite?league=131997", "/compare?league=131997",
+  "/transfers?league=58005", "/transfers?league=131997", "/analytics?league=131997", "/players", "/settings", "/shadow-v3",
+];
 
 for (const route of routes) {
   test(`${route} renders its primary navigation and content`, async ({ page }, testInfo) => {
@@ -20,6 +25,40 @@ for (const route of routes) {
     expect(severeConsoleErrors).toEqual([]);
   });
 }
+
+test("every dashboard tab renders useful content without a route error", async ({ page }) => {
+  for (const route of dashboardRoutes) {
+    const response = await page.goto(route, { waitUntil: "domcontentloaded" });
+    expect(response?.status(), route).toBe(200);
+    await expect(page.getByRole("main"), route).toBeVisible();
+    await expect(page.getByRole("heading", { name: "We could not load this view." }), route).toHaveCount(0);
+    await expect(page.locator("h1"), route).toBeVisible();
+  }
+});
+
+test("mobile dashboard tabs do not create page-level horizontal overflow", async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.includes("mobile"), "mobile-only layout check");
+  for (const route of dashboardRoutes) {
+    await page.goto(route, { waitUntil: "domcontentloaded" });
+    await expect(page.locator("h1"), route).toBeVisible();
+    const sizes = await page.evaluate(() => ({ viewport: window.innerWidth, page: document.documentElement.scrollWidth }));
+    expect(sizes.page, route).toBeLessThanOrEqual(sizes.viewport);
+  }
+});
+
+test("My Team displays official live values instead of placeholder states", async ({ page }) => {
+  await page.goto("/my-team", { waitUntil: "domcontentloaded" });
+  await expect(page.getByText("official live data", { exact: false })).toBeVisible();
+  await expect(page.getByText("In progress", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Pending", { exact: true })).toHaveCount(0);
+});
+
+test("public league transfers remain usable without a personalized optimizer", async ({ page }) => {
+  await page.goto("/transfers?league=131997", { waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("heading", { name: "Transfers & chips" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "League market data is ready" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Popular transfer combinations" })).toBeVisible();
+});
 
 test("journal opens a frozen archived gameweek", async ({ page }) => {
   await page.goto("/journal", { waitUntil: "domcontentloaded" });
