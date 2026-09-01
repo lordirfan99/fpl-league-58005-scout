@@ -36,6 +36,23 @@ def test_current_gameweek_is_discovered() -> None:
     assert response.json()["gameweek"] == identity["current_gameweek"]
 
 
+def test_me_exposes_live_gameweek_and_finalization_lag(monkeypatch) -> None:
+    events = [
+        {"id": 1, "finished": True, "data_checked": True},
+        {"id": 2, "is_current": True},
+        {"id": 3, "is_next": True},
+    ]
+    monkeypatch.setattr(main.repository, "bootstrap", lambda: {"events": events})
+    # No finalized snapshot exists for GW2, so the walk-back lands on GW1.
+    monkeypatch.setattr(main, "_current_gameweek", lambda: 1)
+
+    identity = client.get("/v1/me").json()
+    assert identity["current_gameweek"] == 1
+    assert identity["latest_finalized_gameweek"] == 1
+    assert identity["live_gameweek"] == 2
+    assert identity["snapshot_lag_gameweeks"] == 1
+
+
 def test_current_gameweek_falls_back_from_provisional_snapshot(monkeypatch) -> None:
     finalized = main.repository.league(58005, 1)
 

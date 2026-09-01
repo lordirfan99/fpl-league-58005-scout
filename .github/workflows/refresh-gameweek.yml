@@ -36,6 +36,7 @@ jobs:
           project_id: ${{ vars.GCP_PROJECT_ID }}
           workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v3
       - name: Select latest final gameweek
         id: event
         env:
@@ -109,10 +110,26 @@ jobs:
                   assert sum(1 for pick in squad if pick.get("multiplier", 0) > 0) == 11
               print(f"GW{gw} league {league}: {len(full['competitors'])} valid managers")
           PY
+      - name: Publish finalized snapshots to GCS
+        # Do this before the git commit so the running Cloud Run API picks the
+        # new league snapshots up immediately (repository._read_remote), without
+        # waiting for deploy-api.yml to rebuild the image.
+        if: steps.event.outputs.refresh == 'true'
+        env:
+          GW: ${{ steps.event.outputs.gw }}
+          BUCKET: ${{ vars.FPL_JOURNAL_BUCKET }}
+        run: |
+          for league in 58005 131997; do
+            gcloud storage cp "data/gw${GW}_league${league}_data.json" \
+              "gs://${BUCKET}/snapshots/gw${GW}_league${league}_data.json"
+          done
+          gcloud storage cp data/bootstrap_cache.json "gs://${BUCKET}/snapshots/bootstrap_cache.json"
+          gcloud storage cp data/fixtures_cache.json "gs://${BUCKET}/snapshots/fixtures_cache.json"
       - name: Commit final snapshots
         if: steps.event.outputs.refresh == 'true'
         env:
           GW: ${{ steps.event.outputs.gw }}
+          BRANCH: ${{ github.ref_name }}
         run: |
           python scripts/frozen_artifacts.py --add \
             "data/gw${GW}_league58005_data.json" "data/gw${GW}_league58005_compact.json" \
@@ -122,11 +139,35 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add "data/gw${GW}_league58005_data.json" "data/gw${GW}_league58005_compact.json" \
                   "data/gw${GW}_league131997_data.json" "data/gw${GW}_league131997_compact.json" \
-                  data/bootstrap_cache.json data/frozen_artifacts.json "reports/GW${GW}"
+                  data/bootstrap_cache.json data/fixtures_cache.json data/frozen_artifacts.json "reports/GW${GW}"
           git add "data/journal"
           git add "reports/model-validation/2026-27.json"
           git commit -m "data: finalize GW${GW} league snapshots"
-          git push
+          # A concurrent commit (e.g. an API change) must not lose this
+          # finalization. Rebase onto the latest master and retry the push.
+          pushed=false
+          for attempt in 1 2 3 4 5; do
+            if git pull --rebase --autostash origin "${BRANCH}" && git push origin "HEAD:${BRANCH}"; then
+              pushed=true
+              break
+            fi
+            echo "::warning::push attempt ${attempt} failed; retrying in $((attempt * 10))s"
+            sleep $((attempt * 10))
+          done
+          if [ "${pushed}" != "true" ]; then
+            echo "::error::could not push finalized GW${GW} snapshots after 5 attempts"
+            exit 1
+          fi
       - name: Nothing to refresh
         if: steps.event.outputs.refresh != 'true'
         run: echo "No new finished and data-checked gameweek is waiting for collection."
+      - name: Alert on failure
+        if: failure()
+        uses: ./.github/actions/notify
+        with:
+          message: >-
+            🔴 refresh-gameweek failed (GW=${{ steps.event.outputs.gw || 'unknown' }})
+            on ${{ github.repository }}@${{ github.ref_name }}.
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          bot-token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          chat-id: ${{ secrets.TELEGRAM_ALERT_CHAT_ID }}

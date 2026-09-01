@@ -41,3 +41,13 @@ jobs:
           python scripts/capture_predeadline_journal.py
           --require-cloud
           ${{ inputs.gameweek && format('--gw {0}', inputs.gameweek) || '' }}
+      - name: Alert on failure
+        if: failure()
+        uses: ./.github/actions/notify
+        with:
+          message: >-
+            🔴 capture-journal failed on ${{ github.repository }}@${{ github.ref_name }};
+            pre-deadline evidence may not have been frozen.
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          bot-token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          chat-id: ${{ secrets.TELEGRAM_ALERT_CHAT_ID }}

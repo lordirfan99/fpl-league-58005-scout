@@ -1,0 +1,41 @@
+name: Freshness watchdog
+
+# Answers one question from outside the pipeline: is the production API serving
+# data as fresh as it should be for this point in the gameweek cycle? A normal
+# mid-week "no finalized snapshot yet" gap is tolerated; a genuinely stuck
+# refresh (catalog too old, or a finished + data-checked GW never finalized)
+# raises a Telegram alert.
+
+on:
+  schedule:
+    - cron: "5,35 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fpl-freshness-watchdog
+  cancel-in-progress: true
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Check API data freshness
+        run: python scripts/check_freshness.py
+      - name: Alert on stale data
+        if: failure()
+        uses: ./.github/actions/notify
+        with:
+          message: >-
+            🟠 FPL data freshness watchdog tripped on ${{ github.repository }}.
+            The production API is serving data that is older than its guarantee.
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          bot-token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          chat-id: ${{ secrets.TELEGRAM_ALERT_CHAT_ID }}
