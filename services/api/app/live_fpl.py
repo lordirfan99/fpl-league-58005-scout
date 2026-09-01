@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from time import monotonic
 from typing import Any
 
@@ -129,3 +130,41 @@ def league_standings(league_id: int) -> dict[str, Any]:
         "count": len(rows),
         "managers": rows,
     }
+
+
+def hydrate_manager_squads(rows: list[dict[str, Any]], gameweek: int, limit: int) -> int:
+    """Hydrate the top cohort's squads from official FPL picks in parallel."""
+    bootstrap = _get("bootstrap-static/", ttl=30)
+    players = {int(row["id"]): row for row in bootstrap.get("elements", [])}
+    teams = {int(row["id"]): row.get("name", "—") for row in bootstrap.get("teams", [])}
+    targets = rows[:limit]
+
+    def hydrate(row: dict[str, Any]) -> tuple[int, list[dict[str, Any]], str]:
+        try:
+            payload = _get(f"entry/{int(row['entry'])}/event/{gameweek}/picks/", ttl=30)
+            picks = []
+            captain = ""
+            for pick in payload.get("picks", []):
+                player = players.get(int(pick.get("element") or 0), {})
+                element_type = int(player.get("element_type") or 3)
+                position = "GKP" if element_type == 1 else "DEF" if element_type == 2 else "MID" if element_type == 3 else "FWD"
+                name = player.get("web_name", "Unknown")
+                if pick.get("is_captain"):
+                    captain = name
+                picks.append({"element": int(pick.get("element") or 0), "name": name, "position": position, "team": teams.get(int(player.get("team") or 0), "—"), "cost": int(player.get("now_cost") or 0) / 10, "multiplier": int(pick.get("multiplier") or 0), "is_captain": bool(pick.get("is_captain")), "is_vice_captain": bool(pick.get("is_vice_captain")), "selected_by": float(player.get("selected_by_percent") or 0)})
+            return int(row["entry"]), picks, captain
+        except Exception:
+            return int(row["entry"]), [], ""
+
+    hydrated = 0
+    with ThreadPoolExecutor(max_workers=16) as pool:
+        futures = [pool.submit(hydrate, row) for row in targets]
+        results = [future.result() for future in as_completed(futures)]
+    by_id = {entry_id: (picks, captain) for entry_id, picks, captain in results}
+    for row in rows:
+        entry_id = int(row.get("entry") or 0)
+        if entry_id in by_id and by_id[entry_id][0]:
+            row["_live_squad"] = by_id[entry_id][0]
+            row["_live_captain"] = by_id[entry_id][1]
+            hydrated += 1
+    return hydrated

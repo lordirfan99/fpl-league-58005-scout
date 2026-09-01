@@ -607,6 +607,9 @@ def league_live(league_id: int) -> dict:
                 break
         except SnapshotNotFoundError:
             continue
+    expected_total = len(previous) or live.get("count", 0)
+    elite_target = max(1, math.ceil(expected_total * 0.05))
+    live_fpl.hydrate_manager_squads(live["managers"], current, elite_target)
     live_managers = []
     for row in live["managers"]:
         old = previous.get(str(row.get("entry")), {})
@@ -619,9 +622,9 @@ def league_live(league_id: int) -> dict:
             "total_points": int(row.get("total") or 0),
             "league_rank": int(row.get("rank") or 0),
             "overall_rank": int(old.get("overall_rank") or row.get("rank") or 0),
-            "squad": old.get("squad", []),
-            "squad_cost": float(old.get("squad_cost") or 0),
-            "captain": old.get("captain", ""),
+            "squad": row.get("_live_squad") or old.get("squad", []),
+            "squad_cost": float(old.get("squad_cost") or sum(pick.get("cost", 0) for pick in (row.get("_live_squad") or old.get("squad", [])))),
+            "captain": row.get("_live_captain") or old.get("captain", ""),
             "transfers_made": int(old.get("transfers_made") or 0),
         })
     live_by_id = {row["entry_id"]: row for row in live_managers}
