@@ -354,3 +354,40 @@ def test_provisional_league_snapshot_returns_conflict_not_500(monkeypatch) -> No
     assert payload["gameweek"] == 2
     assert payload["quality_status"] == "invalid"
     assert any("squad_cost" in issue for issue in payload["quality_issues"])
+
+
+def test_live_league_keeps_official_overall_rank_separate_from_league_rank(monkeypatch) -> None:
+    """The Elite top-5% cohort ranks on overall rank, so the live standings
+    `rank` (a position inside this league) must never be written into
+    `overall_rank`. Snapshots persist the official overall rank as `rank`."""
+    monkeypatch.setattr(main.live_fpl, "current_gameweek", lambda: 2)
+    monkeypatch.setattr(main.live_fpl, "league_standings", lambda league_id: {
+        "fetched_at": "2026-09-01T00:00:00+00:00",
+        "count": 2,
+        "managers": [
+            {"entry": 111, "entry_name": "Tracked", "player_name": "A", "rank": 1, "event_total": 60, "total": 120},
+            {"entry": 222, "entry_name": "Joined Late", "player_name": "B", "rank": 2, "event_total": 55, "total": 110},
+        ],
+    })
+    monkeypatch.setattr(main.live_fpl, "hydrate_manager_squads", lambda rows, gameweek, limit: 0)
+    monkeypatch.setattr(main.repository, "league", lambda league_id, gameweek: {
+        "competitors": [
+            # Finalized snapshots carry the official overall rank as `rank`.
+            {"entry_id": 111, "entry_name": "Tracked", "player_name": "A", "rank": 279827,
+             "league_rank": 1, "squad": [], "squad_cost": 100.0, "captain": "Salah"},
+        ],
+    })
+
+    response = client.get("/v1/leagues/58005/live")
+    assert response.status_code == 200
+    managers = {row["entry_id"]: row for row in response.json()["managers"]}
+
+    tracked = managers[111]
+    assert tracked["overall_rank"] == 279827, "snapshot overall rank must survive the live merge"
+    assert tracked["league_rank"] == 1
+    assert tracked["overall_rank"] != tracked["league_rank"]
+
+    # A manager with no finalized snapshot has no known overall rank. Falling
+    # back to their league position would promote them above genuinely
+    # top-ranked managers in the elite cohort, so it stays unknown (0).
+    assert managers[222]["overall_rank"] == 0

@@ -621,7 +621,14 @@ def league_live(league_id: int) -> dict:
             "gw_points": int(row.get("event_total") or 0),
             "total_points": int(row.get("total") or 0),
             "league_rank": int(row.get("rank") or 0),
-            "overall_rank": int(old.get("overall_rank") or row.get("rank") or 0),
+            # Snapshots store the official overall rank as `rank` (the same
+            # alias the Manager schema accepts). The live standings `rank` is a
+            # position inside this league, so it must never stand in for an
+            # overall rank: doing so collapses `overall_rank` onto
+            # `league_rank` and the Elite top-5% cohort silently becomes "top
+            # 5% by league position". Managers with no finalized snapshot keep
+            # 0, which every consumer already treats as unknown and sorts last.
+            "overall_rank": int(old.get("overall_rank") or old.get("rank") or 0),
             "squad": row.get("_live_squad") or old.get("squad", []),
             "squad_cost": float(old.get("squad_cost") or sum(pick.get("cost", 0) for pick in (row.get("_live_squad") or old.get("squad", [])))),
             "captain": row.get("_live_captain") or old.get("captain", ""),
