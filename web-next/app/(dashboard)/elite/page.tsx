@@ -10,8 +10,9 @@ import type { Bootstrap, Pick, Position } from "@/lib/types";
 
 const positionOrder: Position[] = ["GKP", "DEF", "MID", "FWD"];
 
-export default async function ElitePage({ searchParams }: { searchParams: Promise<{ league?: string }> }) {
-  const selected = resolveLeague((await searchParams).league), data = await getLeagueData(selected.id), insight = analyzeElite(data.managers);
+export default async function ElitePage({ searchParams }: { searchParams: Promise<{ league?: string; gw?: string }> }) {
+  const params = await searchParams;
+  const selected = resolveLeague(params.league), requestedGw = params.gw ? Math.max(1, Math.min(38, Number(params.gw) || 1)) : undefined, data = await getLeagueData(selected.id, requestedGw), insight = analyzeElite(data.managers);
   const ownershipById = new Map(insight.ownership.map((player) => [player.element, player.elitePercentage]));
   const positiveEdges = [...insight.ownership].sort((a, b) => b.edge - a.edge).slice(0, 8), avoidEdges = [...insight.ownership].sort((a, b) => a.edge - b.edge).slice(0, 8);
   const snapshotNote = data.liveProvisional ? ` GW${data.gameweek} standings are live from official FPL; final points and ranks may still change.` : data.requestedGameweek !== data.gameweek ? ` GW${data.requestedGameweek} is live but not finalized; this view is showing the latest complete GW${data.gameweek} snapshot.` : "";
