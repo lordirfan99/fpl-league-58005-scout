@@ -88,4 +88,18 @@ export interface DashboardData {
   requestedGameweek?: number;
   snapshotStatus?: "exact" | "fallback_missing" | "fallback_provisional";
   liveProvisional?: boolean;
+  dataStatus?: DataStatus;
+}
+
+export interface DataStatus {
+  source: "official-fpl-live" | "finalized-snapshot" | "unavailable";
+  gameweek: number;
+  asOf?: string;
+  isLive: boolean;
+  isFinal: boolean;
+  stale: boolean;
+  freshnessMinutes?: number;
+  quality: "valid" | "partial" | "invalid" | "unavailable";
+  fallbackReason?: string;
+  hydration?: { loaded: number; expected: number; percent: number };
 }

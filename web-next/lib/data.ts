@@ -1,5 +1,5 @@
 import "server-only";
-import type { Bootstrap, DashboardData, Fixture, FixtureHorizon, LeagueSnapshot, LeagueSummary, Manager, ManagerSummary } from "./types";
+import type { Bootstrap, DashboardData, DataStatus, Fixture, FixtureHorizon, LeagueSnapshot, LeagueSummary, Manager, ManagerSummary } from "./types";
 
 const DATA_BASE = process.env.FPL_DATA_BASE_URL ?? "https://fpl-scout-intelligence.netlify.app/data";
 const API_BASE = (process.env.FPL_API_BASE_URL ?? "https://fpl-scout-api-bztsnhv3ea-uc.a.run.app").replace(/\/$/, "");
@@ -162,6 +162,16 @@ async function getLeagueDataFromApi(leagueId: number, gameweek?: number): Promis
     requestedGameweek: resolvedGameweek,
     snapshotStatus: snapshotGameweek === resolvedGameweek ? "exact" : snapshotStatus,
     liveProvisional,
+    dataStatus: {
+      source: liveProvisional ? "official-fpl-live" : "finalized-snapshot",
+      gameweek: snapshotGameweek,
+      asOf: team?.meta.snapshot_at ?? team?.meta.generated_at ?? league.meta?.snapshot_at ?? league.meta?.generated_at,
+      isLive: liveProvisional,
+      isFinal: !liveProvisional,
+      stale: false,
+      quality: liveProvisional ? "partial" : "valid",
+      hydration: { loaded: league.managers.filter((manager) => manager.squad?.length > 0).length, expected: league.managers.length, percent: Math.round(league.managers.filter((manager) => manager.squad?.length > 0).length / Math.max(1, league.managers.length) * 100) },
+    } satisfies DataStatus,
   };
 }
 
