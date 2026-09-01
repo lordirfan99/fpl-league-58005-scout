@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from time import monotonic
+from time import monotonic, sleep
 from typing import Any
 
 import httpx
@@ -140,8 +140,15 @@ def hydrate_manager_squads(rows: list[dict[str, Any]], gameweek: int, limit: int
     targets = rows[:limit]
 
     def hydrate(row: dict[str, Any]) -> tuple[int, list[dict[str, Any]], str]:
+        for attempt in range(3):
+            try:
+                payload = _get(f"entry/{int(row['entry'])}/event/{gameweek}/picks/", ttl=30)
+                break
+            except Exception:
+                if attempt == 2:
+                    return int(row["entry"]), [], ""
+                sleep(0.25 * (attempt + 1))
         try:
-            payload = _get(f"entry/{int(row['entry'])}/event/{gameweek}/picks/", ttl=30)
             picks = []
             captain = ""
             for pick in payload.get("picks", []):
@@ -157,7 +164,7 @@ def hydrate_manager_squads(rows: list[dict[str, Any]], gameweek: int, limit: int
             return int(row["entry"]), [], ""
 
     hydrated = 0
-    with ThreadPoolExecutor(max_workers=16) as pool:
+    with ThreadPoolExecutor(max_workers=8) as pool:
         futures = [pool.submit(hydrate, row) for row in targets]
         results = [future.result() for future in as_completed(futures)]
     by_id = {entry_id: (picks, captain) for entry_id, picks, captain in results}
