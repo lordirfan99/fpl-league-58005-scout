@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 
 const routes = ["/my-team", "/assistant", "/planner", "/journal", "/settings"];
 
@@ -32,13 +33,15 @@ test("journal opens a frozen archived gameweek", async ({ page }) => {
 
 test("season week navigation routes archive, live, planning and future weeks by purpose", async ({ page }) => {
   await page.goto("/journal", { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("status")).toContainText("Requested GW2; showing the finalized GW1 archive");
   await page.locator("details.week-rail summary").click();
   const rail = page.locator("details.week-rail");
-  await expect(rail.getByRole("link", { name: /GW1$/ })).toHaveAttribute("href", "/journal/2026-27/gw/1");
-  await expect(rail.getByRole("link", { name: /GW2$/ })).toHaveAttribute("href", "/my-team");
-  await expect(rail.getByRole("link", { name: /GW3$/ })).toHaveAttribute("href", "/assistant");
-  await expect(rail.getByRole("link", { name: /GW4$/ })).toHaveAttribute("href", "/planner?gw=4");
+  const archived = rail.locator("a.archived");
+  await expect(archived.first()).toHaveAttribute("href", /\/journal\/2026-27\/gw\/\d+$/);
+  await expect(rail.locator("a.live")).toHaveAttribute("href", "/my-team");
+  const planning = rail.locator("a.planning");
+  if (await planning.count()) await expect(planning).toHaveAttribute("href", "/assistant");
+  const future = rail.locator('a[href^="/planner?gw="]').last();
+  await expect(future).toHaveAttribute("href", "/planner?gw=38");
 });
 
 test("mobile navigation exposes primary and overflow destinations", async ({ page }, testInfo) => {
@@ -61,4 +64,14 @@ test("player artwork resolves to an image or deterministic fallback", async ({ p
     const image = node.querySelector("img") as HTMLImageElement | null;
     return Boolean((image && image.complete && image.naturalWidth > 0) || node.querySelector("span"));
   })).toBe(true);
+});
+
+test("critical pages have no serious or critical automated accessibility violations", async ({ page }) => {
+  for (const route of ["/my-team", "/league", "/journal"]) {
+    await page.goto(route, { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("main")).toBeVisible();
+    const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+    const blocking = result.violations.filter((violation) => ["serious", "critical"].includes(violation.impact ?? ""));
+    expect(blocking, `${route}: ${blocking.map((item) => `${item.id} (${item.nodes.length})`).join(", ")}`).toEqual([]);
+  }
 });

@@ -1,5 +1,5 @@
 import "server-only";
-import type { Bootstrap, DashboardData, Fixture, FixtureHorizon, LeagueSnapshot, Manager } from "./types";
+import type { Bootstrap, DashboardData, Fixture, FixtureHorizon, LeagueSnapshot, LeagueSummary, Manager, ManagerSummary } from "./types";
 
 const DATA_BASE = process.env.FPL_DATA_BASE_URL ?? "https://fpl-scout-intelligence.netlify.app/data";
 const API_BASE = (process.env.FPL_API_BASE_URL ?? "https://fpl-scout-api-bztsnhv3ea-uc.a.run.app").replace(/\/$/, "");
@@ -13,6 +13,55 @@ class ApiRequestError extends Error {
   constructor(public status: number, path: string) {
     super(`Scout API returned ${status} for ${path}`);
   }
+}
+
+async function requestApi<T>(path: string): Promise<T> {
+  const response = await fetch(`${API_BASE}${path}`, { cache: "no-store" });
+  if (!response.ok) throw new ApiRequestError(response.status, path);
+  return response.json() as Promise<T>;
+}
+
+export async function getCompactCatalog(): Promise<Bootstrap> {
+  const payload = await requestApi<{ players: Bootstrap["elements"]; teams: Bootstrap["teams"]; events: Bootstrap["events"] }>("/v1/catalog/compact");
+  return { elements: payload.players, teams: payload.teams, events: payload.events };
+}
+
+export async function getLeagueSummary(
+  leagueId = DEFAULT_LEAGUE_ID,
+  options: { gameweek?: number; page?: number; query?: string } = {},
+): Promise<LeagueSummary> {
+  const params = new URLSearchParams({ page: String(options.page ?? 1), page_size: "50" });
+  if (options.query) params.set("q", options.query);
+  if (options.gameweek === undefined) {
+    return requestApi<LeagueSummary>(`/v1/leagues/${leagueId}/summary?${params}`);
+  }
+  const resolved = options.gameweek;
+  for (let candidate = resolved; candidate >= 1; candidate -= 1) {
+    try {
+      return await requestApi<LeagueSummary>(`/v1/leagues/${leagueId}/summary?gw=${candidate}&${params}`);
+    } catch (error) {
+      if (!(error instanceof ApiRequestError) || ![404, 409].includes(error.status)) throw error;
+    }
+  }
+  throw new Error(`No league summary available for league ${leagueId}`);
+}
+
+export async function getLeagueDirectory(leagueId = DEFAULT_LEAGUE_ID, gameweek?: number) {
+  const suffix = gameweek === undefined ? "" : `?gw=${gameweek}`;
+  const payload = await requestApi<{ gameweek: number; managers: ManagerSummary[] }>(`/v1/leagues/${leagueId}/directory${suffix}`);
+  return payload;
+}
+
+export async function getLeagueManager(leagueId: number, gameweek: number, entryId: number): Promise<Manager> {
+  return requestApi<Manager>(`/v1/leagues/${leagueId}/managers/${entryId}?gw=${gameweek}`);
+}
+
+export async function getTransferOptimizer(leagueId: number, gameweek: number) {
+  return requestApi<{
+    status: string; optimizer_version: string; target_gameweeks: number[]; free_transfers: number;
+    plans: Array<{ transfer_count: number; net_ev?: number; gross_horizon_gain?: number; hit_cost: number; free_transfer_opportunity_cost?: number; bank_after: number; transfers?: Array<{ out_name: string; in_name: string; position: string; weighted_gain: number }> }>;
+    disclaimer: string;
+  }>(`/v1/optimizer/transfers?league_id=${leagueId}&gw=${gameweek}&horizon=5&max_transfers=2`);
 }
 
 async function readJson<T>(path: string): Promise<T> {
@@ -65,11 +114,7 @@ async function getLeagueDataFromApi(leagueId: number, gameweek?: number): Promis
   type TeamPayload = { meta: { generated_at?: string; snapshot_at?: string }; manager: Manager; fixtures: Fixture[] };
   type LeaguePayload = { meta?: { generated_at?: string; snapshot_at?: string }; managers: Manager[] };
   type CatalogPayload = { players: Bootstrap["elements"]; teams: Bootstrap["teams"]; events: Bootstrap["events"] };
-  const request = async <T>(path: string) => {
-    const response = await fetch(`${API_BASE}${path}`, { cache: "no-store" });
-    if (!response.ok) throw new ApiRequestError(response.status, path);
-    return response.json() as Promise<T>;
-  };
+  const request = requestApi;
   const resolvedGameweek = gameweek ?? (await request<IdentityPayload>("/v1/me")).current_gameweek ?? DEFAULT_GAMEWEEK;
   // A league-analysis page must work even when the configured team is not a
   // member of the selected league (for example the public prize league).

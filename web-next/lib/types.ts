@@ -29,6 +29,24 @@ export interface Manager {
   chips_used?: Array<{ name?: string; chip_name?: string }>;
 }
 
+export type ManagerSummary = Omit<Manager, "squad" | "transfer_details" | "chips_used">;
+
+export interface LeagueSummary {
+  league_id: number;
+  gameweek: number;
+  total: number;
+  filtered_total: number;
+  page: number;
+  page_size: number;
+  pages: number;
+  query: string;
+  average_gameweek_points: number;
+  leader?: ManagerSummary;
+  manager?: ManagerSummary;
+  managers: ManagerSummary[];
+  meta?: { generated_at?: string; snapshot_at?: string };
+}
+
 export interface LeagueSnapshot {
   fetched_at?: string;
   competitors: Manager[];

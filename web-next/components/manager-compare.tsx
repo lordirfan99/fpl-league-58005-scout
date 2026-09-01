@@ -1,26 +1,29 @@
 "use client";
 
 import { ArrowRight, Search } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ManagerLineup } from "@/components/manager-lineup";
-import type { Bootstrap, Manager, Pick } from "@/lib/types";
+import type { Bootstrap, Manager, ManagerSummary, Pick } from "@/lib/types";
 
-export function ManagerCompare({ managers, bootstrap, gameweek, myTeamId }: { managers: Manager[]; bootstrap: Bootstrap; gameweek: number; myTeamId: number }) {
-  const sorted = useMemo(() => [...managers].sort((a, b) => a.league_rank - b.league_rank), [managers]);
-  const defaultA = sorted.find((manager) => manager.entry_id === myTeamId)?.entry_id ?? sorted[0]?.entry_id;
-  const [leftId, setLeftId] = useState(defaultA), [rightId, setRightId] = useState(sorted.find((manager) => manager.entry_id !== defaultA)?.entry_id ?? defaultA), [open, setOpen] = useState<Manager | null>(null);
+export function ManagerCompare({ directory, left, right, bootstrap, gameweek, leagueId }: { directory: ManagerSummary[]; left: Manager; right: Manager; bootstrap: Bootstrap; gameweek: number; leagueId: number }) {
+  const router = useRouter();
+  const [open, setOpen] = useState<Manager | null>(null);
   useEffect(() => { if (!open) return; const close = (event: KeyboardEvent) => { if (event.key === "Escape") setOpen(null); }; document.addEventListener("keydown", close); document.body.classList.add("modal-open"); return () => { document.removeEventListener("keydown", close); document.body.classList.remove("modal-open"); }; }, [open]);
-  const left = sorted.find((manager) => manager.entry_id === leftId) ?? sorted[0], right = sorted.find((manager) => manager.entry_id === rightId) ?? sorted[1] ?? sorted[0];
+  const select = (side: "left" | "right", id: number) => {
+    const params = new URLSearchParams({ league: String(leagueId), left: String(side === "left" ? id : left.entry_id), right: String(side === "right" ? id : right.entry_id) });
+    router.push(`/compare?${params}`);
+  };
   const leftMap = new Map(left.squad.map((pick) => [pick.element, pick])), rightMap = new Map(right.squad.map((pick) => [pick.element, pick]));
   const shared = left.squad.filter((pick) => rightMap.has(pick.element)), leftOnly = left.squad.filter((pick) => !rightMap.has(pick.element)), rightOnly = right.squad.filter((pick) => !leftMap.has(pick.element));
-  return <><div className="compare-selectors"><ManagerPicker label="Manager A" managers={sorted} selectedId={leftId} onSelect={setLeftId} /><span className="compare-vs">VS</span><ManagerPicker label="Manager B" managers={sorted} selectedId={rightId} onSelect={setRightId} /></div>
+  return <><div className="compare-selectors"><ManagerPicker label="Manager A" managers={directory} selectedId={left.entry_id} onSelect={(id) => select("left", id)} /><span className="compare-vs">VS</span><ManagerPicker label="Manager B" managers={directory} selectedId={right.entry_id} onSelect={(id) => select("right", id)} /></div>
     <div className="compare-kpis"><article><span>Squad overlap</span><strong>{shared.length}/15</strong></article><article><span>GW gap</span><strong>{Math.abs(left.gw_points - right.gw_points)}</strong></article><article><span>Rank gap</span><strong>{Math.abs(left.overall_rank - right.overall_rank).toLocaleString()}</strong></article><article><span>Value gap</span><strong>£{Math.abs(left.squad_cost - right.squad_cost).toFixed(1)}m</strong></article></div>
     <div className="compare-squads"><SquadColumn manager={left} picks={leftOnly} onOpen={() => setOpen(left)} /><SquadColumn manager={right} picks={rightOnly} onOpen={() => setOpen(right)} /><section className="compare-shared"><span>SHARED CORE</span><h3>{shared.length} players</h3><div>{shared.map((pick) => <PlayerChip key={pick.element} pick={pick} />)}</div></section></div>
     {open ? <ManagerLineup manager={open} bootstrap={bootstrap} gameweek={gameweek} onClose={() => setOpen(null)} /> : null}
   </>;
 }
 
-function ManagerPicker({ label, managers, selectedId, onSelect }: { label: string; managers: Manager[]; selectedId: number; onSelect: (id: number) => void }) {
+function ManagerPicker({ label, managers, selectedId, onSelect }: { label: string; managers: ManagerSummary[]; selectedId: number; onSelect: (id: number) => void }) {
   const selected = managers.find((manager) => manager.entry_id === selectedId) ?? managers[0];
   const [query, setQuery] = useState("");
   const matches = useMemo(() => { const term = query.trim().toLowerCase(); if (!term) return managers.slice(0, 6); return managers.filter((manager) => `${manager.entry_name} ${manager.player_name} ${manager.entry_id} ${manager.league_rank}`.toLowerCase().includes(term)).slice(0, 8); }, [managers, query]);
