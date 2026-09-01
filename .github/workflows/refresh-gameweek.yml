@@ -1,8 +1,9 @@
 name: Refresh completed gameweek
 
+# Scheduled on GCP Cloud Scheduler -> Cloud Run Job `fpl-refresh-gameweek`
+# (which publishes to GCS `snapshots/`). This workflow is kept as a manual
+# fallback and additionally commits the finalized artifacts back to git.
 on:
-  schedule:
-    - cron: "23 * * * *"
   workflow_dispatch:
     inputs:
       gameweek:
