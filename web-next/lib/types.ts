@@ -87,4 +87,5 @@ export interface DashboardData {
   fetchedAt?: string;
   requestedGameweek?: number;
   snapshotStatus?: "exact" | "fallback_missing" | "fallback_provisional";
+  liveProvisional?: boolean;
 }

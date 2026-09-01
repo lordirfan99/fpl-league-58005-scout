@@ -128,6 +128,7 @@ async function getLeagueDataFromApi(leagueId: number, gameweek?: number): Promis
   let league: LeaguePayload | null = null;
   let snapshotGameweek = resolvedGameweek;
   let snapshotStatus: DashboardData["snapshotStatus"] = "exact";
+  let liveProvisional = false;
   for (let candidate = resolvedGameweek; candidate >= 1; candidate -= 1) {
     try {
       league = await request<LeaguePayload>(`/v1/leagues/${leagueId}?gw=${candidate}`);
@@ -135,6 +136,15 @@ async function getLeagueDataFromApi(leagueId: number, gameweek?: number): Promis
       break;
     } catch (error) {
       if (!(error instanceof ApiRequestError) || ![404, 409].includes(error.status)) throw error;
+      if (candidate === resolvedGameweek && error.status === 409) {
+        const live = await request<LeaguePayload & { gameweek: number; provisional?: boolean }>(`/v1/leagues/${leagueId}/live`).catch(() => null);
+        if (live?.managers?.length) {
+          league = live;
+          snapshotGameweek = live.gameweek;
+          liveProvisional = true;
+          break;
+        }
+      }
       if (candidate === resolvedGameweek) snapshotStatus = error.status === 409 ? "fallback_provisional" : "fallback_missing";
     }
   }
@@ -150,6 +160,7 @@ async function getLeagueDataFromApi(leagueId: number, gameweek?: number): Promis
     fetchedAt: team?.meta.snapshot_at ?? team?.meta.generated_at ?? league.meta?.snapshot_at ?? league.meta?.generated_at,
     requestedGameweek: resolvedGameweek,
     snapshotStatus: snapshotGameweek === resolvedGameweek ? "exact" : snapshotStatus,
+    liveProvisional,
   };
 }
 

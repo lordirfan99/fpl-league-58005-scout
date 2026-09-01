@@ -585,6 +585,41 @@ def transfer_optimizer(
     }
 
 
+@app.get("/v1/leagues/{league_id}/live")
+def league_live(league_id: int) -> dict:
+    """Return official in-progress standings for the current gameweek.
+
+    Squads are retained from the latest finalized snapshot when available;
+    points, totals and league ranks come from the live FPL standings feed.
+    """
+    current = _current_gameweek()
+    live = live_fpl.league_standings(league_id)
+    previous: dict[str, dict] = {}
+    if current > 1:
+        try:
+            previous = {str(row.get("entry_id")): row for row in repository.league(league_id, current - 1).get("competitors", [])}
+        except SnapshotNotFoundError:
+            previous = {}
+    managers = []
+    for row in live["managers"]:
+        old = previous.get(str(row.get("entry")), {})
+        managers.append({
+            **old,
+            "entry_id": int(row.get("entry") or 0),
+            "entry_name": row.get("entry_name") or old.get("entry_name", ""),
+            "player_name": row.get("player_name") or old.get("player_name", ""),
+            "gw_points": int(row.get("event_total") or 0),
+            "total_points": int(row.get("total") or 0),
+            "league_rank": int(row.get("rank") or 0),
+            "overall_rank": int(old.get("overall_rank") or row.get("rank") or 0),
+            "squad": old.get("squad", []),
+            "squad_cost": float(old.get("squad_cost") or 0),
+            "captain": old.get("captain", ""),
+            "transfers_made": int(old.get("transfers_made") or 0),
+        })
+    return {"meta": {"source": "official-fpl-live", "snapshot_gameweek": current, "quality_status": "unknown", "generated_at": live["fetched_at"]}, "league_id": league_id, "gameweek": current, "count": len(managers), "declared_count": len(managers), "hydration_percent": 100.0, "managers": managers, "provisional": True}
+
+
 @app.get("/v1/catalog/compact")
 def compact_catalog() -> dict:
     bootstrap = repository.bootstrap()

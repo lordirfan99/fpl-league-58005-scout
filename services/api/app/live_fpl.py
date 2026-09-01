@@ -96,3 +96,34 @@ def team(entry_id: int, gameweek: int, league_id: int | None = None) -> dict[str
         "points_source": "history" if history_row.get("event_total") is not None else "official-live-picks",
         "provisional": not bool((next((e for e in bootstrap.get("events", []) if int(e.get("id") or 0) == gameweek), {}) or {}).get("finished")),
     }
+
+
+def league_standings(league_id: int) -> dict[str, Any]:
+    """Read the current classic-league standings directly from FPL.
+
+    FPL publishes event totals and ranks while a gameweek is live, before our
+    immutable research snapshot is finalized. Keep this read model separate
+    from snapshot collection so provisional values can never overwrite history.
+    """
+    rows: list[dict[str, Any]] = []
+    page = 1
+    while True:
+        payload = _get(
+            f"leagues-classic/{league_id}/standings/?page_standings={page}&page_new_entries=1",
+            ttl=60,
+        )
+        batch = payload.get("standings", {}).get("results", [])
+        rows.extend(batch)
+        if not payload.get("standings", {}).get("has_next") or not batch:
+            break
+        page += 1
+        if page > 100:
+            break
+    return {
+        "source": "official-fpl-live",
+        "status": "live",
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
+        "league_id": league_id,
+        "count": len(rows),
+        "managers": rows,
+    }
