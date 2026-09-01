@@ -23,6 +23,10 @@ class ArtifactIntegrityError(RuntimeError):
     pass
 
 
+class LiveSnapshotNotFoundError(FileNotFoundError):
+    pass
+
+
 class SnapshotRepository:
     """Read-only adapter around the existing collector output."""
 
@@ -107,6 +111,27 @@ class SnapshotRepository:
         # Packaged data remains a fail-soft recovery source if GCS is
         # temporarily unavailable or the requested artifact is not published.
         return self._read_local(filename)
+
+    def live_league(self, league_id: int) -> dict[str, Any]:
+        """Read the complete live snapshot named by its validated manifest."""
+        if self._bucket is None:
+            raise LiveSnapshotNotFoundError("Live snapshot bucket is unavailable")
+        try:
+            manifest = json.loads(self._bucket.blob(f"live/league{league_id}/current.json").download_as_text(encoding="utf-8"))
+            object_name = str(manifest.get("snapshot_object") or "")
+            if manifest.get("status") != "complete" or not object_name.startswith(f"live/"):
+                raise LiveSnapshotNotFoundError(f"Live manifest for league {league_id} is incomplete")
+            payload = json.loads(self._bucket.blob(object_name).download_as_text(encoding="utf-8"))
+        except LiveSnapshotNotFoundError:
+            raise
+        except Exception as error:
+            raise LiveSnapshotNotFoundError(f"Live snapshot for league {league_id} is unavailable") from error
+        if payload.get("status") != "complete" or int(payload.get("league_id") or 0) != league_id:
+            raise LiveSnapshotNotFoundError(f"Live snapshot for league {league_id} is invalid")
+        expected = int(payload.get("expected_count") or 0)
+        if expected <= 0 or int(payload.get("hydrated_count") or 0) != expected or len(payload.get("managers") or []) != expected:
+            raise LiveSnapshotNotFoundError(f"Live snapshot for league {league_id} is partial")
+        return payload
 
     def league(self, league_id: int, gameweek: int) -> dict[str, Any]:
         payload = self.read(f"gw{gameweek}_league{league_id}_data.json")

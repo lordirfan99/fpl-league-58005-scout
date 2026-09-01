@@ -205,6 +205,28 @@ def test_live_team_endpoint_is_separate_from_snapshots(monkeypatch) -> None:
     assert response.json()["league"]["id"] == 58005
 
 
+def test_live_league_reads_only_a_complete_background_snapshot(monkeypatch) -> None:
+    snapshot = {
+        "gameweek": 2,
+        "expected_count": 2,
+        "hydrated_count": 2,
+        "captured_at": "2026-09-01T12:00:00+00:00",
+        "pages_fetched": 1,
+        "managers": [
+            {"entry_id": 1, "entry_name": "One", "player_name": "Manager One", "gw_points": 40, "total_points": 100, "overall_rank": 1, "league_rank": 1, "squad_cost": 100.0, "captain": "Player", "transfers_made": 0, "squad": [{"element": 1}] * 15},
+            {"entry_id": 2, "entry_name": "Two", "player_name": "Manager Two", "gw_points": 30, "total_points": 90, "overall_rank": 2, "league_rank": 2, "squad_cost": 99.0, "captain": "Player", "transfers_made": 0, "squad": [{"element": 2}] * 15},
+        ],
+    }
+    monkeypatch.setattr(main.repository, "live_league", lambda league_id: snapshot)
+
+    response = client.get("/v1/leagues/58005/live")
+
+    assert response.status_code == 200
+    assert response.json()["hydration_percent"] == 100.0
+    assert response.json()["count"] == 2
+    assert response.json()["meta"]["source"] == "official-fpl-live-snapshot"
+
+
 def test_live_team_calculates_current_score_and_league_rank_from_official_payload(monkeypatch) -> None:
     payloads = {
         "bootstrap-static/": {
