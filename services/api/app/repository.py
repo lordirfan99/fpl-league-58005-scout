@@ -35,6 +35,9 @@ class SnapshotRepository:
         self.bucket_name = bucket_name
         self._bucket = storage.Client().bucket(bucket_name) if bucket_name and storage else None
         self._remote_cache: dict[str, tuple[int | None, dict[str, Any]]] = {}
+        # GCS server-side last-modified per snapshot file. Used as a freshness
+        # fallback when a published payload carries no embedded fetched_at.
+        self._remote_updated: dict[str, float] = {}
         self._hash_cache: dict[int, str] = {}
 
     def _path(self, filename: str) -> Path:
@@ -62,18 +65,26 @@ class SnapshotRepository:
         try:
             blob.reload()
             generation = int(blob.generation) if blob.generation else None
+            if blob.updated is not None:
+                self._remote_updated[filename] = blob.updated.timestamp()
             cached = self._remote_cache.get(filename)
             if cached and cached[0] == generation:
                 return cached[1]
             payload = json.loads(blob.download_as_text(encoding="utf-8"))
             self._remote_cache[filename] = (generation, payload)
             return payload
-        except Exception:
+        except Exception as error:  # pragma: no cover - network/permission failures
+            print(json.dumps({
+                "level": "warning", "message": "remote_snapshot_read_failed",
+                "filename": filename, "error_type": type(error).__name__,
+                "error": str(error)[:200],
+            }), flush=True)
             return None
 
     @staticmethod
     def _capture_timestamp(payload: dict[str, Any]) -> float | None:
-        raw = payload.get("_meta", {}).get("fetched_at") or payload.get("fetched_at")
+        meta = payload.get("_meta")
+        raw = (meta.get("fetched_at") if isinstance(meta, dict) else None) or payload.get("fetched_at")
         if not raw:
             return None
         try:
@@ -82,7 +93,14 @@ class SnapshotRepository:
             return None
 
     def _fresh_reference(self, filename: str) -> dict[str, Any]:
-        """Choose the newest proven reference cache across image and GCS."""
+        """Choose the newest proven reference cache across image and GCS.
+
+        A published payload that carries no embedded ``fetched_at`` (for example
+        a raw upstream dump with no ``_meta`` wrapper) must not be treated as
+        older than the packaged image copy: fall back to the GCS object's
+        server-side last-modified time so a fresh-but-unwrapped publish still
+        wins over a stale baked-in snapshot.
+        """
         try:
             local = self._read_local(filename)
         except SnapshotNotFoundError:
@@ -96,6 +114,13 @@ class SnapshotRepository:
             return local
         local_time = self._capture_timestamp(local)
         remote_time = self._capture_timestamp(remote)
+        if remote_time is None:
+            remote_time = self._remote_updated.get(filename)
+            if remote_time is not None:
+                print(json.dumps({
+                    "level": "warning", "message": "remote_snapshot_missing_provenance",
+                    "filename": filename, "using": "gcs_object_updated_time",
+                }), flush=True)
         if local_time is not None and (remote_time is None or local_time >= remote_time):
             return local
         if remote_time is not None:
