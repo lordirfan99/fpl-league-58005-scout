@@ -2,7 +2,7 @@ import { LeagueSwitcher, resolveLeague } from "@/components/league-switcher";
 import { MetricCard } from "@/components/metric-card";
 import { PageHeader } from "@/components/page-header";
 import { getLeagueData, getTransferOptimizer } from "@/lib/data";
-import { analyzeElite } from "@/lib/elite";
+import { analyzeElite, chipLabel } from "@/lib/elite";
 
 type Count = { name: string; count: number; percentage: number };
 
@@ -19,7 +19,7 @@ function ActivityList({ rows, empty }: { rows: Count[]; empty: string }) {
 export default async function TransfersPage({ searchParams }: { searchParams: Promise<{ league?: string }> }) {
   const selected = resolveLeague((await searchParams).league), data = await getLeagueData(selected.id), elite = analyzeElite(data.managers);
   const moves = countRows(data.managers.flatMap((manager) => manager.transfer_details?.map((move) => `${move.out} → ${move.in}`) ?? []), data.managers.length);
-  const chips = countRows(data.managers.flatMap((manager) => manager.chips_used?.map((chip) => chip.name ?? chip.chip_name ?? "Unknown") ?? []), data.managers.length);
+  const chips = countRows(data.managers.flatMap((manager) => manager.chips_used?.map((chip) => chipLabel(chip.name ?? chip.chip_name ?? "Unknown")) ?? []), data.managers.length);
   const activeManagers = data.managers.filter((manager) => manager.transfers_made > 0).length;
   const eliteActive = elite.elite.filter((manager) => manager.transfers_made > 0).length;
   // The optimizer is personalized to the configured team. Public leagues can

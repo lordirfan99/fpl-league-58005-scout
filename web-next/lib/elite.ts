@@ -1,4 +1,7 @@
 import type { Manager, Pick, Position } from "./types";
+
+const CHIP_LABELS: Record<string, string> = { bboost: "Bench Boost", "3xc": "Triple Captain", freehit: "Free Hit", wildcard: "Wildcard" };
+export const chipLabel = (name: string) => CHIP_LABELS[name.toLowerCase()] ?? name;
 import { getElite } from "./data";
 
 const positions: Position[] = ["GKP", "DEF", "MID", "FWD"];
@@ -39,7 +42,7 @@ export function analyzeElite(managers: Manager[]) {
       transferCounts.set(label, (transferCounts.get(label) ?? 0) + 1);
     });
     manager.chips_used?.forEach((chip) => {
-      const name = chip.name ?? chip.chip_name ?? "Unknown";
+      const name = chipLabel(chip.name ?? chip.chip_name ?? "Unknown");
       chipCounts.set(name, (chipCounts.get(name) ?? 0) + 1);
     });
   });
