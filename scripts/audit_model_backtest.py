@@ -64,6 +64,12 @@ def main() -> int:
         "method": "walk_forward_frozen_predeadline_to_final_personal_squad",
         "evidence": evidence,
         "models": {name: score(rows) for name, rows in models.items()},
+        "maturity": {
+            "paired_gameweeks": sum(1 for row in evidence if row.get("status") == "paired"),
+            "minimum_gameweeks_for_review": 6,
+            "promotion_eligible": sum(1 for row in evidence if row.get("status") == "paired") >= 6,
+            "status": "review_ready" if sum(1 for row in evidence if row.get("status") == "paired") >= 6 else "insufficient_evidence",
+        },
         "limitations": [
             "Public journal outcomes cover the personal 15-player squad, not the full player universe.",
             "Production V4 and V4.2 lack row-level frozen predictions in the repository contract.",
@@ -72,7 +78,9 @@ def main() -> int:
     }
     rendered = json.dumps(result, indent=2) + "\n"
     if args.output:
-        Path(args.output).write_text(rendered, encoding="utf-8")
+        target = Path(args.output)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(rendered, encoding="utf-8")
     else:
         print(rendered, end="")
     return 0

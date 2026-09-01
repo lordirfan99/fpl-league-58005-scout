@@ -77,6 +77,12 @@ jobs:
         env:
           FPL_JOURNAL_BUCKET: ${{ vars.FPL_JOURNAL_BUCKET }}
         run: python scripts/build_gameweek_journal.py --gw "${{ steps.event.outputs.gw }}"
+      - name: Recompute walk-forward model evidence
+        if: steps.event.outputs.refresh == 'true'
+        run: >-
+          python scripts/audit_model_backtest.py
+          --season 2026-27
+          --output reports/model-validation/2026-27.json
       - name: Validate snapshot integrity
         if: steps.event.outputs.refresh == 'true'
         env:
@@ -116,6 +122,7 @@ jobs:
                   "data/gw${GW}_league131997_data.json" "data/gw${GW}_league131997_compact.json" \
                   data/bootstrap_cache.json data/frozen_artifacts.json "reports/GW${GW}"
           git add "data/journal"
+          git add "reports/model-validation/2026-27.json"
           git commit -m "data: finalize GW${GW} league snapshots"
           git push
       - name: Nothing to refresh

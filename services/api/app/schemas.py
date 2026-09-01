@@ -7,6 +7,7 @@ from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 
 class ApiMeta(BaseModel):
+    schema_version: str = "api-meta-v2"
     run_id: str | None = None
     generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     snapshot_at: datetime | None = None
@@ -16,6 +17,12 @@ class ApiMeta(BaseModel):
     snapshot_gameweek: int | None = None
     quality_status: Literal["valid", "invalid", "unknown"] = "unknown"
     quality_issues: list[str] = Field(default_factory=list)
+    data_version: str | None = None
+    data_hash: str | None = None
+    cutoff_at: datetime | None = None
+    feature_version: str | None = None
+    model_version: str | None = None
+    code_revision: str | None = None
 
 
 class Pick(BaseModel):
@@ -48,6 +55,21 @@ class Manager(BaseModel):
     squad: list[Pick]
 
 
+class ManagerSummary(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    entry_id: int
+    entry_name: str
+    player_name: str
+    gw_points: int
+    total_points: int
+    overall_rank: int = Field(validation_alias=AliasChoices("overall_rank", "rank"))
+    league_rank: int
+    squad_cost: float
+    captain: str
+    transfers_made: int = Field(validation_alias=AliasChoices("transfers_made", "gw_transfers"))
+
+
 class TeamResponse(BaseModel):
     meta: ApiMeta
     league_id: int
@@ -64,6 +86,22 @@ class LeagueResponse(BaseModel):
     declared_count: int
     hydration_percent: float
     managers: list[Manager]
+
+
+class LeagueSummaryResponse(BaseModel):
+    meta: ApiMeta
+    league_id: int
+    gameweek: int
+    total: int
+    filtered_total: int
+    page: int
+    page_size: int
+    pages: int
+    query: str
+    average_gameweek_points: float
+    leader: ManagerSummary | None
+    manager: ManagerSummary | None
+    managers: list[ManagerSummary]
 
 
 class CatalogResponse(BaseModel):

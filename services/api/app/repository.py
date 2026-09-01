@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import datetime
 from functools import lru_cache
@@ -30,6 +31,7 @@ class SnapshotRepository:
         self.bucket_name = bucket_name
         self._bucket = storage.Client().bucket(bucket_name) if bucket_name and storage else None
         self._remote_cache: dict[str, tuple[int | None, dict[str, Any]]] = {}
+        self._hash_cache: dict[int, str] = {}
 
     def _path(self, filename: str) -> Path:
         path = (self.data_dir / filename).resolve()
@@ -107,7 +109,16 @@ class SnapshotRepository:
         return self._read_local(filename)
 
     def league(self, league_id: int, gameweek: int) -> dict[str, Any]:
-        return self.read(f"gw{gameweek}_league{league_id}_data.json")
+        payload = self.read(f"gw{gameweek}_league{league_id}_data.json")
+        cache_key = id(payload)
+        digest = self._hash_cache.get(cache_key)
+        if digest is None:
+            canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
+            digest = hashlib.sha256(canonical).hexdigest()
+            self._hash_cache[cache_key] = digest
+        enriched = dict(payload)
+        enriched["_artifact_sha256"] = digest
+        return enriched
 
     def bootstrap(self) -> dict[str, Any]:
         return self._fresh_reference("bootstrap_cache.json")
@@ -125,7 +136,12 @@ class SnapshotRepository:
         return payload.get(f"gw{gameweek}", [])
 
     def fixture_horizon(self, from_gameweek: int, to_gameweek: int) -> dict[str, list[dict[str, Any]]]:
-        return {str(gw): self.fixtures(gw) for gw in range(from_gameweek, to_gameweek + 1)}
+        try:
+            payload = self._fresh_reference("fixtures_cache.json")
+            cached = payload.get("gameweeks", {})
+            return {str(gw): cached.get(str(gw), []) for gw in range(from_gameweek, to_gameweek + 1)}
+        except SnapshotNotFoundError:
+            return {str(gw): self.fixtures(gw) for gw in range(from_gameweek, to_gameweek + 1)}
 
     def journal_index(self, season: str) -> dict[str, Any]:
         payload = self.read(f"journal/{season}/index.json")

@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "season": "2026-27",
+  "method": "walk_forward_frozen_predeadline_to_final_personal_squad",
+  "evidence": [
+    {
+      "gameweek": 1,
+      "status": "missing_frozen_prediction"
+    }
+  ],
+  "models": {
+    "v5": {
+      "status": "insufficient_evidence",
+      "n": 0,
+      "mae": null,
+      "rmse": null,
+      "bias": null,
+      "spearman": null,
+      "top_k_actual_mean": null,
+      "by_gameweek": {},
+      "by_position": {},
+      "calibration": {}
+    },
+    "fpl_ep_next": {
+      "status": "insufficient_evidence",
+      "n": 0,
+      "mae": null,
+      "rmse": null,
+      "bias": null,
+      "spearman": null,
+      "top_k_actual_mean": null,
+      "by_gameweek": {},
+      "by_position": {},
+      "calibration": {}
+    }
+  },
+  "maturity": {
+    "paired_gameweeks": 0,
+    "minimum_gameweeks_for_review": 6,
+    "promotion_eligible": false,
+    "status": "insufficient_evidence"
+  },
+  "limitations": [
+    "Public journal outcomes cover the personal 15-player squad, not the full player universe.",
+    "Production V4 and V4.2 lack row-level frozen predictions in the repository contract.",
+    "Missing gameweeks are never reconstructed from later bootstrap data."
+  ]
+}

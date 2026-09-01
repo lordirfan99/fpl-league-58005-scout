@@ -16,6 +16,9 @@ def get_json(url: str) -> dict:
     with urlopen(Request(url, headers={"User-Agent": "FPLScoutJournal/1.0"}), timeout=60) as response:
         return json.load(response)
 
+def canonical_hash(payload: object) -> str:
+    return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
 def main() -> int:
     parser = argparse.ArgumentParser(); parser.add_argument("--season"); parser.add_argument("--gw", type=int); parser.add_argument("--require-cloud", action="store_true")
     parser.add_argument("--window-hours", type=float, default=6.0, help="Only capture this many hours before the deadline")
@@ -33,12 +36,31 @@ def main() -> int:
         return 0
     decision = get_json(f"{API}/v1/decision/current?league_id=58005&gw={gw}")
     v5 = get_json(f"{API}/v1/projections/current?gw={max(1, gw-1)}")
+    control = get_json(f"{API}/v1/autopilot/control-centre")
+    optimizer = get_json(
+        f"{API}/v1/optimizer/transfers?league_id=58005&gw={max(1, gw-1)}&horizon=5&max_transfers=2"
+    )
+    health = get_json(f"{API}/health")
     fpl = [{"element": p["id"], "name": p.get("web_name"), "ep_next": p.get("ep_next")}
            for p in bootstrap.get("elements", [])]
-    payload = {"schema_version": 1, "season": args.season, "gameweek": gw,
+    artifacts = {
+        "decision": decision, "v5": v5, "fpl_baseline": fpl,
+        "shadow_v42": control.get("shadow_v42"), "net_ev_optimizer": optimizer,
+    }
+    payload = {"schema_version": 2, "season": args.season, "gameweek": gw,
                "captured_at": datetime.now(timezone.utc).isoformat(), "deadline": event["deadline_time"],
-               "decision": decision, "v5": v5, "fpl_baseline": fpl}
-    raw = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode(); payload["input_hash"] = hashlib.sha256(raw).hexdigest()
+               **artifacts,
+               "artifact_hashes": {name: canonical_hash(value) for name, value in artifacts.items()},
+               "source_provenance": {
+                   "api_revision": health.get("revision"),
+                   "api_version": health.get("version"),
+                   "competitive_model": health.get("competitive_model"),
+                   "v5_model": v5.get("projection_version"),
+                   "optimizer_version": optimizer.get("optimizer_version"),
+                   "shadow_model": (control.get("shadow_v42") or {}).get("model_version"),
+                   "external_bridge": control.get("source_provenance"),
+               }}
+    payload["input_hash"] = canonical_hash(payload)
     target = ROOT / "data" / "journal-raw" / args.season / f"gw{gw:02d}" / "predeadline.json"
     target.parent.mkdir(parents=True, exist_ok=True)
     if target.exists():
