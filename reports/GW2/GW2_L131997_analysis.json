@@ -1,0 +1,341 @@
+{
+  "gw": 2,
+  "generated_at": "2026-09-01T14:00:12Z",
+  "total_competitors": 2638,
+  "squad_ownership": {
+    "total_teams": 2638,
+    "avg_budget": 99.09,
+    "avg_total_points": 144.7,
+    "avg_gw_points": 86.9,
+    "max_gw_points": 151,
+    "min_gw_points": 25,
+    "template_players": [
+      "Jo\u00e3o Pedro",
+      "B.Fernandes",
+      "Calafiori",
+      "Haaland",
+      "Mbeumo"
+    ],
+    "top_owned": [
+      {
+        "name": "Jo\u00e3o Pedro",
+        "pct": 75.7
+      },
+      {
+        "name": "B.Fernandes",
+        "pct": 59.6
+      },
+      {
+        "name": "Calafiori",
+        "pct": 58.9
+      },
+      {
+        "name": "Haaland",
+        "pct": 58.1
+      },
+      {
+        "name": "Mbeumo",
+        "pct": 53.0
+      },
+      {
+        "name": "Tzolis",
+        "pct": 42.0
+      },
+      {
+        "name": "Szoboszlai",
+        "pct": 40.3
+      },
+      {
+        "name": "Calvert-Lewin",
+        "pct": 36.5
+      },
+      {
+        "name": "Verbruggen",
+        "pct": 36.4
+      },
+      {
+        "name": "Shaw",
+        "pct": 34.7
+      },
+      {
+        "name": "Kinsky",
+        "pct": 32.3
+      },
+      {
+        "name": "Gabriel",
+        "pct": 26.8
+      },
+      {
+        "name": "Raya",
+        "pct": 26.7
+      },
+      {
+        "name": "Semenyo",
+        "pct": 26.5
+      },
+      {
+        "name": "Maguire",
+        "pct": 26.2
+      },
+      {
+        "name": "Rogers",
+        "pct": 21.8
+      },
+      {
+        "name": "Ndiaye",
+        "pct": 20.1
+      },
+      {
+        "name": "White",
+        "pct": 19.8
+      },
+      {
+        "name": "Palmer",
+        "pct": 19.7
+      },
+      {
+        "name": "Lammens",
+        "pct": 19.2
+      },
+      {
+        "name": "Hume",
+        "pct": 19.0
+      },
+      {
+        "name": "Isak",
+        "pct": 18.6
+      },
+      {
+        "name": "E.Le F\u00e9e",
+        "pct": 18.5
+      },
+      {
+        "name": "Brobbey",
+        "pct": 18.0
+      },
+      {
+        "name": "Gro\u00df",
+        "pct": 15.7
+      },
+      {
+        "name": "Thiago",
+        "pct": 14.6
+      },
+      {
+        "name": "Gu\u00e9hi",
+        "pct": 14.3
+      },
+      {
+        "name": "Virgil",
+        "pct": 14.0
+      },
+      {
+        "name": "Roefs",
+        "pct": 14.0
+      },
+      {
+        "name": "Diop",
+        "pct": 14.0
+      }
+    ],
+    "captain_choices": [
+      {
+        "name": "B.Fernandes",
+        "count": 806,
+        "percentage": 30.6
+      },
+      {
+        "name": "Haaland",
+        "count": 623,
+        "percentage": 23.6
+      },
+      {
+        "name": "Jo\u00e3o Pedro",
+        "count": 265,
+        "percentage": 10.0
+      },
+      {
+        "name": "Mbeumo",
+        "count": 170,
+        "percentage": 6.4
+      },
+      {
+        "name": "Palmer",
+        "count": 107,
+        "percentage": 4.1
+      },
+      {
+        "name": "Isak",
+        "count": 66,
+        "percentage": 2.5
+      },
+      {
+        "name": "Saka",
+        "count": 59,
+        "percentage": 2.2
+      },
+      {
+        "name": "Tzolis",
+        "count": 41,
+        "percentage": 1.6
+      },
+      {
+        "name": "\u00d8degaard",
+        "count": 39,
+        "percentage": 1.5
+      },
+      {
+        "name": "Szoboszlai",
+        "count": 39,
+        "percentage": 1.5
+      }
+    ]
+  },
+  "transfers": {
+    "total_transfers": 7094,
+    "teams_with_transfers": 1332,
+    "hit_takers": 238,
+    "top_transfers_in": [
+      {
+        "name": "Palmer",
+        "count": 4015
+      },
+      {
+        "name": "Gakpo",
+        "count": 3597
+      },
+      {
+        "name": "Szoboszlai",
+        "count": 3403
+      },
+      {
+        "name": "White",
+        "count": 3223
+      },
+      {
+        "name": "De Cuyper",
+        "count": 3205
+      },
+      {
+        "name": "Barry",
+        "count": 3144
+      },
+      {
+        "name": "Gvardiol",
+        "count": 3048
+      },
+      {
+        "name": "Tzolakis",
+        "count": 2849
+      },
+      {
+        "name": "Saka",
+        "count": 2735
+      },
+      {
+        "name": "M.Sangar\u00e9",
+        "count": 2724
+      }
+    ],
+    "top_transfers_out": [
+      {
+        "name": "Mbeumo",
+        "count": 3712
+      },
+      {
+        "name": "B.Fernandes",
+        "count": 3073
+      },
+      {
+        "name": "Rogers",
+        "count": 2757
+      },
+      {
+        "name": "Tzolis",
+        "count": 2731
+      },
+      {
+        "name": "Thiago",
+        "count": 2713
+      },
+      {
+        "name": "White",
+        "count": 2690
+      },
+      {
+        "name": "Szoboszlai",
+        "count": 2515
+      },
+      {
+        "name": "Semenyo",
+        "count": 2430
+      },
+      {
+        "name": "Calvert-Lewin",
+        "count": 2353
+      },
+      {
+        "name": "Ndiaye",
+        "count": 2351
+      }
+    ]
+  },
+  "formations": [
+    {
+      "formation": "5-5-3",
+      "count": 2638
+    }
+  ],
+  "injuries": {
+    "total_injured_instances": 851,
+    "avg_injured_per_team": 0.3,
+    "most_common_injured": [
+      [
+        "Rodon",
+        167
+      ],
+      [
+        "Emersonn",
+        82
+      ],
+      [
+        "Palestra",
+        70
+      ],
+      [
+        "Watkins",
+        66
+      ],
+      [
+        "Hinshelwood",
+        65
+      ],
+      [
+        "Mateta",
+        51
+      ],
+      [
+        "Georginio",
+        42
+      ],
+      [
+        "I.Sangar\u00e9",
+        40
+      ],
+      [
+        "S\u00e1vio",
+        36
+      ],
+      [
+        "Ayari",
+        29
+      ]
+    ]
+  },
+  "chips": {
+    "3xc": 46,
+    "wildcard": 248,
+    "freehit": 66,
+    "bboost": 55
+  }
+}

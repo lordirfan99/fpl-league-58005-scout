@@ -6,36 +6,184 @@
     {
       "gameweek": 1,
       "status": "missing_frozen_prediction"
+    },
+    {
+      "gameweek": 2,
+      "status": "paired",
+      "scope": "personal_squad",
+      "actual_rows": 15
     }
   ],
   "models": {
     "v5": {
-      "status": "insufficient_evidence",
-      "n": 0,
-      "mae": null,
-      "rmse": null,
-      "bias": null,
-      "spearman": null,
-      "top_k_actual_mean": null,
-      "by_gameweek": {},
-      "by_position": {},
-      "calibration": {}
+      "status": "measured",
+      "n": 15,
+      "mae": 4.302667,
+      "rmse": 6.615601,
+      "bias": -3.237333,
+      "spearman": 0.106695,
+      "top_k_actual_mean": 8.2,
+      "by_gameweek": {
+        "2": {
+          "n": 15,
+          "mae": 4.302667,
+          "rmse": 6.615601,
+          "bias": -3.237333,
+          "spearman": 0.106695
+        }
+      },
+      "by_position": {
+        "GKP": {
+          "n": 2,
+          "mae": 2.15,
+          "rmse": 2.59326,
+          "bias": -1.45,
+          "spearman": -1.0
+        },
+        "DEF": {
+          "n": 5,
+          "mae": 4.77,
+          "rmse": 5.550299,
+          "bias": -2.206,
+          "spearman": -0.3
+        },
+        "MID": {
+          "n": 5,
+          "mae": 5.58,
+          "rmse": 9.458615,
+          "bias": -5.58,
+          "spearman": 0.564288
+        },
+        "FWD": {
+          "n": 3,
+          "mae": 2.83,
+          "rmse": 3.727667,
+          "bias": -2.243333,
+          "spearman": -0.5
+        }
+      },
+      "calibration": {
+        "10_plus": {
+          "n": 15,
+          "brier": 0.134297,
+          "bins": [
+            {
+              "low": 0.0,
+              "high": 0.1,
+              "n": 14,
+              "mean_probability": 0.0,
+              "event_rate": 0.1429
+            },
+            {
+              "low": 0.1,
+              "high": 0.2,
+              "n": 1,
+              "mean_probability": 0.1202,
+              "event_rate": 0.0
+            }
+          ]
+        },
+        "60_plus": {
+          "n": 15,
+          "brier": 0.294485,
+          "bins": [
+            {
+              "low": 0.0,
+              "high": 0.1,
+              "n": 1,
+              "mean_probability": 0.0,
+              "event_rate": 1.0
+            },
+            {
+              "low": 0.5,
+              "high": 0.6,
+              "n": 14,
+              "mean_probability": 0.5065,
+              "event_rate": 0.9286
+            }
+          ]
+        },
+        "start": {
+          "n": 15,
+          "brier": 0.290523,
+          "bins": [
+            {
+              "low": 0.0,
+              "high": 0.1,
+              "n": 1,
+              "mean_probability": 0.0,
+              "event_rate": 1.0
+            },
+            {
+              "low": 0.5,
+              "high": 0.6,
+              "n": 13,
+              "mean_probability": 0.5,
+              "event_rate": 0.9231
+            },
+            {
+              "low": 0.6,
+              "high": 0.7,
+              "n": 1,
+              "mean_probability": 0.6716,
+              "event_rate": 1.0
+            }
+          ]
+        }
+      }
     },
     "fpl_ep_next": {
-      "status": "insufficient_evidence",
-      "n": 0,
-      "mae": null,
-      "rmse": null,
-      "bias": null,
-      "spearman": null,
-      "top_k_actual_mean": null,
-      "by_gameweek": {},
-      "by_position": {},
+      "status": "measured",
+      "n": 15,
+      "mae": 3.526667,
+      "rmse": 5.922556,
+      "bias": -2.833333,
+      "spearman": 0.47843,
+      "top_k_actual_mean": 10.8,
+      "by_gameweek": {
+        "2": {
+          "n": 15,
+          "mae": 3.526667,
+          "rmse": 5.922556,
+          "bias": -2.833333,
+          "spearman": 0.47843
+        }
+      },
+      "by_position": {
+        "GKP": {
+          "n": 2,
+          "mae": 1.3,
+          "rmse": 1.476482,
+          "bias": -0.7,
+          "spearman": 1.0
+        },
+        "DEF": {
+          "n": 5,
+          "mae": 3.66,
+          "rmse": 4.719534,
+          "bias": -2.22,
+          "spearman": 0.223607
+        },
+        "MID": {
+          "n": 5,
+          "mae": 5.0,
+          "rmse": 8.641991,
+          "bias": -5.0,
+          "spearman": 0.872082
+        },
+        "FWD": {
+          "n": 3,
+          "mae": 2.333333,
+          "rmse": 3.511885,
+          "bias": -1.666667,
+          "spearman": null
+        }
+      },
       "calibration": {}
     }
   },
   "maturity": {
-    "paired_gameweeks": 0,
+    "paired_gameweeks": 1,
     "minimum_gameweeks_for_review": 6,
     "promotion_eligible": false,
     "status": "insufficient_evidence"

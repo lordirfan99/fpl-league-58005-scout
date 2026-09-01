@@ -6,7 +6,12 @@
     "data/gw1_league58005_compact.json": "256748fe694942a2cde3518f8eb64e869e41ef3dc197a2f4dc7ee59157b43c1b",
     "data/gw1_league131997_data.json": "46d32d6948acff0830d9704f47048395e5f6536f21cea78c639277835229044f",
     "data/gw1_league131997_compact.json": "9f2e24b0dfb59ccdbc4585cf646752e075dbd7d601f101d329b4799f29cec0c4",
-    "data/journal/2026-27/gw01.json": "2a6ccdf97279b74c8b7cf76f388b07982dd2ab10c7e92531005a550a9b028746"
+    "data/journal/2026-27/gw01.json": "2a6ccdf97279b74c8b7cf76f388b07982dd2ab10c7e92531005a550a9b028746",
+    "data/gw2_league58005_data.json": "0e428223d468c658608b272f30dfc79342b630ed7277efd85ccfcb6f1f711407",
+    "data/gw2_league58005_compact.json": "3ac45ef726ae0e95bc23943b043b7366638369dbca7de5c359fcd5134428c736",
+    "data/gw2_league131997_data.json": "1b9a00b0840ddfb1bd2cd1538b06045664d62faee5fd2bd98e5d02582fde24aa",
+    "data/gw2_league131997_compact.json": "fe25436932e83da988cd6108d6db4af0ed091e41bf3731946e1c7c7b80c7b641",
+    "data/journal/2026-27/gw02.json": "9869457e46f6e05d9dd731d1a944a28c3144b85825c2f115882dab0bd66d6a07"
   },
   "corrections": []
 }
