@@ -121,7 +121,17 @@ async function getLeagueDataFromApi(leagueId: number, gameweek?: number): Promis
   // Treat the personal-team lookup as optional; the league snapshot remains
   // the source of truth for elite/cohort pages.
   const catalog = await request<CatalogPayload>("/v1/catalog");
-  const resolvedGameweek = gameweek ?? catalog.events.find((event) => event.is_current)?.id ?? identity.current_gameweek ?? DEFAULT_GAMEWEEK;
+  // For the current view, ask the live read model first. The catalog is a
+  // reference snapshot and can lag the official FPL gameweek transition.
+  let liveIdentity: { gameweek: number } | null = null;
+  if (gameweek === undefined) {
+    try {
+      liveIdentity = await request<{ gameweek: number }>(`/v1/live/team?league_id=${leagueId}`);
+    } catch {
+      liveIdentity = null;
+    }
+  }
+  const resolvedGameweek = gameweek ?? liveIdentity?.gameweek ?? catalog.events.find((event) => event.is_current)?.id ?? identity.current_gameweek ?? DEFAULT_GAMEWEEK;
   // League snapshots arrive after the live gameweek advances.  If the
   // selected league has not been collected for the current GW yet, walk back
   // to the newest available snapshot instead of rendering an application
@@ -137,7 +147,10 @@ async function getLeagueDataFromApi(leagueId: number, gameweek?: number): Promis
       break;
     } catch (error) {
       if (!(error instanceof ApiRequestError) || ![404, 409].includes(error.status)) throw error;
-      if (candidate === resolvedGameweek && error.status === 409) {
+      // A current GW commonly has no finalized snapshot yet. Depending on
+      // API revision this is reported as either 404 (not collected) or 409
+      // (provisional/not finalized); both must use the official live route.
+      if (candidate === resolvedGameweek && [404, 409].includes(error.status)) {
         const live = await request<LeaguePayload & { gameweek: number; provisional?: boolean }>(`/v1/leagues/${leagueId}/live`).catch(() => null);
         if (live?.managers?.length) {
           league = live;

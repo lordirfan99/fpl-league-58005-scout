@@ -607,7 +607,10 @@ def league_live(league_id: int) -> dict:
                 break
         except SnapshotNotFoundError:
             continue
-    expected_total = len(previous) or live.get("count", 0)
+    # The FPL standings feed is the authority for the current league
+    # population.  Snapshots only enrich a current manager; they must not add
+    # historical rows that no longer belong to this league.
+    expected_total = int(live.get("count") or 0)
     elite_target = max(1, math.ceil(expected_total * 0.05))
     live_fpl.hydrate_manager_squads(live["managers"], current, elite_target)
     live_managers = []
@@ -622,19 +625,16 @@ def league_live(league_id: int) -> dict:
             "total_points": int(row.get("total") or 0),
             "league_rank": int(row.get("rank") or 0),
             "overall_rank": int(old.get("overall_rank") or row.get("rank") or 0),
-            "squad": row.get("_live_squad") or old.get("squad", []),
-            "squad_cost": float(old.get("squad_cost") or sum(pick.get("cost", 0) for pick in (row.get("_live_squad") or old.get("squad", [])))),
-            "captain": row.get("_live_captain") or old.get("captain", ""),
+            # A historical squad is not a live squad.  Only expose official
+            # current picks so the Elite analysis cannot present old lineups
+            # as today's ownership or captaincy.
+            "squad": row.get("_live_squad", []),
+            "squad_cost": float(sum(pick.get("cost", 0) for pick in row.get("_live_squad", []))),
+            "captain": row.get("_live_captain", ""),
             "transfers_made": int(old.get("transfers_made") or 0),
         })
-    live_by_id = {row["entry_id"]: row for row in live_managers}
-    # Preserve the full league shape for navigation while clearly marking
-    # rows outside the live top cohort as historical until the next snapshot.
-    managers = [live_by_id.get(int(row.get("entry_id") or 0), row) for row in previous.values()]
-    managers.extend(row for key, row in live_by_id.items() if key not in {int(x.get("entry_id") or 0) for x in previous.values()})
-    if not managers:
-        managers = live_managers
-    return {"meta": {"source": "official-fpl-live", "snapshot_gameweek": current, "quality_status": "partial", "generated_at": live["fetched_at"]}, "league_id": league_id, "gameweek": current, "count": len(managers), "declared_count": len(managers), "hydration_percent": round(len(live_managers) / max(1, len(managers)) * 100, 1), "managers": managers, "provisional": True}
+    hydrated_count = sum(1 for manager in live_managers if manager["squad"])
+    return {"meta": {"source": "official-fpl-live", "snapshot_gameweek": current, "quality_status": "complete-live-standings", "generated_at": live["fetched_at"], "pages_fetched": live.get("pages_fetched", 0)}, "league_id": league_id, "gameweek": current, "count": len(live_managers), "declared_count": expected_total, "hydration_percent": round(hydrated_count / max(1, expected_total) * 100, 1), "managers": live_managers, "provisional": True}
 
 
 @app.get("/v1/catalog/compact")

@@ -25,17 +25,21 @@ function rows(counter: Map<string, number>, denominator: number): CountRow[] {
 }
 
 export function analyzeElite(managers: Manager[]) {
-  // Live league standings can arrive before every squad is hydrated. Never
-  // let empty squads pollute formation, captaincy, ownership, or value stats.
+  // The cohort size must be based on the complete tracked population. Live
+  // standings can arrive before every squad is hydrated, so use hydrated
+  // members only for squad/ownership statistics—not for deciding who belongs
+  // to the top 5% cohort.
+  const elite = getElite(managers);
   const hydrated = managers.filter((manager) => manager.squad?.length > 0);
   const researchManagers = hydrated.length ? hydrated : managers;
-  const elite = getElite(researchManagers);
+  const hydratedElite = elite.filter((manager) => manager.squad?.length > 0);
+  const researchElite = hydratedElite.length ? hydratedElite : elite;
   const playerById = new Map<number, Pick>(), eliteOwned = new Map<number, number>(), eliteStarted = new Map<number, number>(), leagueOwned = new Map<number, number>(), captainCounts = new Map<string, number>(), formationCounts = new Map<string, number>(), transferCounts = new Map<string, number>(), chipCounts = new Map<string, number>();
   researchManagers.forEach((manager) => manager.squad.forEach((pick) => {
     playerById.set(pick.element, pick);
     leagueOwned.set(pick.element, (leagueOwned.get(pick.element) ?? 0) + 1);
   }));
-  elite.forEach((manager) => {
+  researchElite.forEach((manager) => {
     formationCounts.set(formation(manager), (formationCounts.get(formation(manager)) ?? 0) + 1);
     captainCounts.set(manager.captain || "Unknown", (captainCounts.get(manager.captain || "Unknown") ?? 0) + 1);
     manager.squad.forEach((pick, index) => {
@@ -52,7 +56,7 @@ export function analyzeElite(managers: Manager[]) {
     });
   });
 
-  const commonFormation = rows(formationCounts, elite.length)[0]?.name ?? "3-4-3";
+  const commonFormation = rows(formationCounts, researchElite.length)[0]?.name ?? "3-4-3";
   const [defenders, midfielders, forwards] = commonFormation.split("-").map(Number);
   const starterLimits: Record<Position, number> = { GKP: 1, DEF: defenders, MID: midfielders, FWD: forwards };
   const chosen = new Set<number>();
@@ -65,7 +69,7 @@ export function analyzeElite(managers: Manager[]) {
     const needed = squadLimits[position] - starterLimits[position];
     [...playerById.values()].filter((pick) => pick.position === position && !chosen.has(pick.element)).sort((a, b) => (eliteOwned.get(b.element) ?? 0) - (eliteOwned.get(a.element) ?? 0)).slice(0, needed).forEach((pick) => { chosen.add(pick.element); template.push({ ...pick, multiplier: 0, is_captain: false, is_vice_captain: false }); });
   });
-  const captainOrder = rows(captainCounts, elite.length);
+  const captainOrder = rows(captainCounts, researchElite.length);
   const captain = template.find((pick) => pick.name === captainOrder[0]?.name);
   const vice = template.find((pick) => pick.name === captainOrder[1]?.name);
   if (captain) { captain.is_captain = true; captain.multiplier = 2; }
@@ -73,26 +77,26 @@ export function analyzeElite(managers: Manager[]) {
 
   const ownership = [...eliteOwned].map(([element, count]) => {
     const pick = playerById.get(element)!;
-    const elitePercentage = count / elite.length * 100, leaguePercentage = (leagueOwned.get(element) ?? 0) / researchManagers.length * 100;
-    return { ...pick, count, elitePercentage, leaguePercentage, edge: elitePercentage - leaguePercentage, starterPercentage: (eliteStarted.get(element) ?? 0) / elite.length * 100 };
+    const elitePercentage = count / researchElite.length * 100, leaguePercentage = (leagueOwned.get(element) ?? 0) / researchManagers.length * 100;
+    return { ...pick, count, elitePercentage, leaguePercentage, edge: elitePercentage - leaguePercentage, starterPercentage: (eliteStarted.get(element) ?? 0) / researchElite.length * 100 };
   }).sort((a, b) => b.elitePercentage - a.elitePercentage);
 
-  const points = elite.map((manager) => manager.gw_points), minimum = Math.floor(Math.min(...points) / 10) * 10, maximum = Math.ceil(Math.max(...points) / 10) * 10;
+  const points = researchElite.map((manager) => manager.gw_points), minimum = Math.floor(Math.min(...points) / 10) * 10, maximum = Math.ceil(Math.max(...points) / 10) * 10;
   const pointsDistribution = [];
   for (let start = minimum; start < maximum; start += 10) {
     const count = points.filter((value) => value >= start && value < start + 10).length;
-    pointsDistribution.push({ label: `${start}–${start + 9}`, count, percentage: count / elite.length * 100 });
+    pointsDistribution.push({ label: `${start}–${start + 9}`, count, percentage: count / researchElite.length * 100 });
   }
   const templateIds = new Set(template.map((pick) => pick.element));
   const managerRows = elite.map((manager) => ({ ...manager, formation: formation(manager), templateOverlap: manager.squad.filter((pick) => templateIds.has(pick.element)).length })).sort((a, b) => a.overall_rank - b.overall_rank);
 
   return {
-    elite, template, ownership, captaincy: captainOrder, formations: rows(formationCounts, elite.length), transfers: rows(transferCounts, elite.length), chips: rows(chipCounts, elite.length), pointsDistribution, managerRows, commonFormation,
-    averageGw: points.reduce((sum, value) => sum + value, 0) / elite.length,
+    elite, template, ownership, captaincy: captainOrder, formations: rows(formationCounts, researchElite.length), transfers: rows(transferCounts, researchElite.length), chips: rows(chipCounts, researchElite.length), pointsDistribution, managerRows, commonFormation,
+    averageGw: points.reduce((sum, value) => sum + value, 0) / researchElite.length,
     medianGw: median(points),
-    averageTotal: elite.reduce((sum, manager) => sum + manager.total_points, 0) / elite.length,
-    averageValue: elite.reduce((sum, manager) => sum + (manager.squad_cost || manager.squad.reduce((value, pick) => value + (pick.cost || 0), 0)), 0) / Math.max(1, elite.length),
-    averageRank: Math.round(elite.reduce((sum, manager) => sum + manager.overall_rank, 0) / elite.length),
+    averageTotal: researchElite.reduce((sum, manager) => sum + manager.total_points, 0) / researchElite.length,
+    averageValue: researchElite.reduce((sum, manager) => sum + (manager.squad_cost || manager.squad.reduce((value, pick) => value + (pick.cost || 0), 0)), 0) / Math.max(1, researchElite.length),
+    averageRank: Math.round(researchElite.reduce((sum, manager) => sum + manager.overall_rank, 0) / researchElite.length),
     topScore: Math.max(...points),
   };
 }

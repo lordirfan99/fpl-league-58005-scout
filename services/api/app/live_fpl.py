@@ -107,27 +107,40 @@ def league_standings(league_id: int) -> dict[str, Any]:
     from snapshot collection so provisional values can never overwrite history.
     """
     rows: list[dict[str, Any]] = []
+    seen_entries: set[int] = set()
     page = 1
-    while True:
+    # Classic-league pages contain 50 managers.  Fetch every page FPL says is
+    # available: a live view must never silently turn a large league into a
+    # top-200 sample.  The upper bound is only a circuit breaker for a broken
+    # upstream pagination response (12,500 managers is far above this app's
+    # supported league size).
+    max_pages = 250
+    while page <= max_pages:
         payload = _get(
             f"leagues-classic/{league_id}/standings/?page_standings={page}&page_new_entries=1",
             ttl=60,
         )
-        batch = payload.get("standings", {}).get("results", [])
-        rows.extend(batch)
-        if not payload.get("standings", {}).get("has_next") or not batch:
+        standings = payload.get("standings", {})
+        batch = standings.get("results", [])
+        if not batch:
+            break
+        for row in batch:
+            entry_id = int(row.get("entry") or 0)
+            if entry_id and entry_id not in seen_entries:
+                seen_entries.add(entry_id)
+                rows.append(row)
+        if not standings.get("has_next"):
             break
         page += 1
-        # The dashboard's live cohort only needs the top 200 managers. Full
-        # league history remains available from finalized snapshots.
-        if page >= 4:
-            break
+    else:
+        raise RuntimeError(f"FPL standings pagination exceeded {max_pages} pages for league {league_id}")
     return {
         "source": "official-fpl-live",
         "status": "live",
         "fetched_at": datetime.now(timezone.utc).isoformat(),
         "league_id": league_id,
         "count": len(rows),
+        "pages_fetched": page,
         "managers": rows,
     }
 
