@@ -139,8 +139,8 @@ def test_decision_packet_is_local_only_when_planning_artifact_is_unavailable(mon
     assert payload["meta"]["source"] == "deadline-planning"
 
 
-def test_api_has_no_autopilot_or_telegram_surface() -> None:
-    """No bridge/Telegram endpoint, setting or response field survives."""
+def test_public_api_has_no_legacy_autopilot_surface() -> None:
+    """Legacy bridge paths remain absent; private v3 control is separately gated."""
     from app.settings import settings as live_settings
 
     for attribute in ("autopilot_base_url", "autopilot_token", "telegram_configured", "telegram_bot_name"):
@@ -152,6 +152,7 @@ def test_api_has_no_autopilot_or_telegram_surface() -> None:
         body = client.get(path).text.lower()
         assert "telegram" not in body, path
         assert "autopilot" not in body, path
+    assert client.get("/v3/control/status").status_code == 401
 
 
 def test_v4_calibration_and_chase_are_deterministic() -> None:

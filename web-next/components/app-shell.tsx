@@ -9,7 +9,7 @@ type NavSection = "Workspace";
 
 const navigation: Array<{ href: string; label: string; icon: typeof LayoutDashboard; section: NavSection }> = [
   { href: "/now", label: "Now", icon: LayoutDashboard, section: "Workspace" },
-  { href: "/builder", label: "Squad Builder", icon: Users, section: "Workspace" },
+  { href: "/plan", label: "Plan", icon: Users, section: "Workspace" },
   { href: "/live", label: "Live", icon: Activity, section: "Workspace" },
   { href: "/journal", label: "Journal", icon: BookOpenText, section: "Workspace" },
 ];
@@ -18,7 +18,7 @@ const sections: NavSection[] = ["Workspace"];
 
 type PlanningContext = { latestSnapshotGw?: number; requestedSnapshotGw?: number; snapshotStatus?: "exact" | "fallback_missing" | "fallback_provisional"; planningGw?: number; deadline?: string; status?: string; dataSource?: string; dataQuality?: string };
 
-const mobilePrimary = ["/now", "/builder", "/live", "/journal"];
+const mobilePrimary = ["/now", "/plan", "/live", "/journal"];
 
 export function AppShell({ children, context }: { children: React.ReactNode; context?: PlanningContext }) {
   const pathname = usePathname();

@@ -59,6 +59,7 @@ steps:
       - --region=${_REGION}
       - --platform=managed
       - --allow-unauthenticated
+      - --service-account=fpl-control-api@$PROJECT_ID.iam.gserviceaccount.com
       - --set-env-vars=FPL_MY_TEAM_ID=2797967,FPL_DEFAULT_LEAGUE_ID=58005,FPL_SNAPSHOT_BUCKET=irfan-374115-fpl-snapshots,FPL_GIT_SHA=${_GIT_SHA}
       # The Autopilot bridge is retired: drop the stale fpl-dashboard-read-token
       # secret binding so no deployed revision references it.
