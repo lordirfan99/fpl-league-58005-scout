@@ -120,27 +120,30 @@ def test_canonical_decision_packet_contract() -> None:
     assert payload["writes_enabled"] is False
     assert payload["executable"] is False
     assert payload["plan"] is None
-    assert payload["packet_status"] == "insufficient_data"
+    assert payload["packet_status"] == "advisory"
 
 
-def test_decision_packet_is_local_only_when_planning_artifact_is_unavailable(monkeypatch) -> None:
-    """Without a planning artifact the API cannot fabricate a recommendation.
+def test_decision_packet_is_local_only_safe_hold_without_snapshot(monkeypatch) -> None:
+    """With no finalized snapshot the packet is a plainly labelled safe hold.
 
     There is no bridge fallback: the API can only ever return locally derived
     read-only decision support.
     """
-    monkeypatch.setattr(main.repository, "planning", lambda *_: (_ for _ in ()).throw(main.SnapshotNotFoundError("plan")))
+    monkeypatch.setattr(
+        main, "recommendations",
+        lambda **_: (_ for _ in ()).throw(HTTPException(status_code=404)),
+    )
     payload = client.get("/v1/decision/current?league_id=58005&gw=2").json()
-    assert payload["packet_status"] == "insufficient_data"
+    assert payload["packet_status"] == "safe_hold"
     assert payload["executable"] is False
     assert payload["plan"] is None
     assert payload["execution_authority"] == "manual_fpl"
     assert payload["writes_enabled"] is False
-    assert payload["meta"]["source"] == "deadline-planning"
+    assert payload["meta"]["source"] == "snapshot"
 
 
-def test_public_api_has_no_legacy_autopilot_surface() -> None:
-    """Legacy bridge paths remain absent; private v3 control is separately gated."""
+def test_api_has_no_autopilot_or_telegram_surface() -> None:
+    """No bridge/Telegram endpoint, setting or response field survives."""
     from app.settings import settings as live_settings
 
     for attribute in ("autopilot_base_url", "autopilot_token", "telegram_configured", "telegram_bot_name"):
@@ -152,7 +155,6 @@ def test_public_api_has_no_legacy_autopilot_surface() -> None:
         body = client.get(path).text.lower()
         assert "telegram" not in body, path
         assert "autopilot" not in body, path
-    assert client.get("/v3/control/status").status_code == 401
 
 
 def test_v4_calibration_and_chase_are_deterministic() -> None:

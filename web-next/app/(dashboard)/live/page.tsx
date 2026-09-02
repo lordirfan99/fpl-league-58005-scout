@@ -1,9 +1,0 @@
-import { LiveRefresh } from "@/components/live-refresh";
-import { PageHeader } from "@/components/page-header";
-import { getLiveTeam } from "@/lib/live";
-
-export default async function LivePage() {
-  const live = await getLiveTeam();
-  const active = Boolean(live?.fixtures.some((fixture) => fixture.started && !fixture.finished));
-  return <div className="page-stack"><LiveRefresh active={active} everySeconds={15} /><PageHeader eyebrow={active ? "LIVE · AUTO-REFRESH 15S" : "LIVE REVIEW"} title="Points, rank and differentials" description="Live mode is review only. It intentionally contains no transfer, captain or chip advice." updated={live?.fetched_at ? new Date(live.fetched_at).toLocaleString("en-MY") : undefined} /><section className="metric-grid"><div className="metric-card"><span>GW points</span><strong>{live?.points ?? "—"}</strong><small>{live?.provisional ? "Official live · provisional" : "Official result"}</small></div><div className="metric-card"><span>Overall rank</span><strong>{live?.entry.overall_rank?.toLocaleString() ?? "—"}</strong><small>Current official reading</small></div><div className="metric-card"><span>League rank</span><strong>{live?.league?.entry_rank ?? "—"}</strong><small>{live?.league?.name ?? "League unavailable"}</small></div><div className="metric-card"><span>Captain</span><strong>{live?.picks.find((pick) => pick.is_captain)?.web_name ?? "—"}</strong><small>Review ownership exposure below</small></div></section><section className="surface"><div className="section-heading"><div><span>LIVE SQUAD</span><h2>Confirmed official picks</h2></div></div><div className="live-picks">{live?.picks.map((pick) => <article key={pick.element}><strong>{pick.web_name}{pick.is_captain ? " (C)" : ""}</strong><span>{pick.points} pts · {pick.multiplier ? "playing" : "bench"}</span></article>) ?? <p>Live FPL data is currently unavailable. The last finalized review remains in Journal.</p>}</div></section></div>;
-}

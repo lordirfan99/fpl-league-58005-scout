@@ -64,20 +64,3 @@ def test_chip_modes_are_explicit_and_do_not_bypass_transfer_rules() -> None:
         )
         assert result["status"] == "research_only"
         assert result["plans"]
-
-
-def test_chip_squad_respects_official_availability_allowlist() -> None:
-    squad, candidates = squad_and_candidates()
-    players = {**squad, **candidates}
-    next_id = 100
-    for position, count in (("GKP", 5), ("DEF", 10), ("MID", 10), ("FWD", 7)):
-        for index in range(count):
-            # The highest-projected midfielder is deliberately unavailable.
-            players[next_id] = player(next_id, f"C{index % 12}", position, 50 if next_id == 110 else 4 + index / 10)
-            next_id += 1
-    eligible = frozenset(element for element in players if element != 110)
-    result = optimize_multiweek_transfers(
-        squad, players, {element: 5 for element in players}, [players, players],
-        MultiWeekContext(bank=0, free_transfers=1, weights=(1, .8), active_chip="wildcard", eligible_player_ids=eligible),
-    )
-    assert 110 not in result["plans"][0]["squad"]

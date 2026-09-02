@@ -18,7 +18,6 @@ import os
 import subprocess
 import sys
 import urllib.request
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -63,54 +62,6 @@ def _bootstrap_events() -> list[dict]:
         return json.load(response)["events"]
 
 
-def _official_bootstrap() -> dict:
-    request = urllib.request.Request(
-        "https://fantasy.premierleague.com/api/bootstrap-static/",
-        headers={"User-Agent": "Fantasy-Scout-Tasks/1.0"},
-    )
-    with urllib.request.urlopen(request, timeout=30) as response:
-        return json.load(response)
-
-
-def _official_fixtures(gameweek: int, bootstrap: dict) -> list[dict]:
-    request = urllib.request.Request(
-        f"https://fantasy.premierleague.com/api/fixtures/?event={gameweek}",
-        headers={"User-Agent": "Fantasy-Scout-Tasks/1.0"},
-    )
-    with urllib.request.urlopen(request, timeout=30) as response:
-        fixtures = json.load(response)
-    teams = {int(row["id"]): row.get("name", "—") for row in bootstrap.get("teams", [])}
-    return [{
-        **row, "team_h": teams.get(int(row.get("team_h") or 0), "—"),
-        "team_a": teams.get(int(row.get("team_a") or 0), "—"),
-    } for row in fixtures]
-
-
-def _snapshot_for_gameweek(gameweek: int) -> dict | None:
-    """Prefer immutable GCS snapshots, then the task-image recovery copy."""
-    name = f"snapshots/gw{gameweek}_league{LEAGUES[0]}_data.json"
-    try:
-        return json.loads(_bucket().blob(name).download_as_text(encoding="utf-8"))
-    except Exception:
-        path = ROOT / "data" / f"gw{gameweek}_league{LEAGUES[0]}_data.json"
-        return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
-
-
-def _planning_name(gameweek: int) -> str:
-    return f"planning/{SEASON}/gw{gameweek:02d}/current.json"
-
-
-def _write_json(name: str, payload: dict, *, immutable: bool = False) -> bool:
-    blob = _bucket().blob(name)
-    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
-    if immutable and blob.exists():
-        print(f"immutable object already present, keeping: gs://{BUCKET}/{name}", flush=True)
-        return False
-    kwargs = {"if_generation_match": 0} if immutable else {}
-    blob.upload_from_string(encoded, content_type="application/json", **kwargs)
-    return True
-
-
 def _latest_final_gameweek() -> int:
     return max(
         (event["id"] for event in _bootstrap_events() if event.get("finished") and event.get("data_checked")),
@@ -135,43 +86,10 @@ def task_fixtures() -> None:
 
 
 def task_capture_journal(gameweek: int | None) -> None:
-    task_decision_refresh(final_window=True, gameweek=gameweek)
-
-
-def task_decision_refresh(final_window: bool = False, gameweek: int | None = None) -> None:
-    """Publish a deadline-safe plan using the latest final GW as its baseline."""
-    from app.planning import build_artifact, freeze_payload, next_event
-
-    bootstrap = _official_bootstrap()
-    event = next((row for row in bootstrap.get("events", []) if int(row.get("id") or 0) == gameweek), None) if gameweek else next_event(bootstrap)
-    if not event:
-        print("no next FPL deadline is published", flush=True)
-        return
-    target = int(event["id"])
-    deadline = datetime.fromisoformat(str(event["deadline_time"]).replace("Z", "+00:00"))
-    now = datetime.now(timezone.utc)
-    if final_window and not (deadline - timedelta(hours=2) <= now < deadline):
-        print(f"GW{target} final planning window is closed", flush=True)
-        return
-    source = next((
-        snapshot for candidate in range(target - 1, 0, -1)
-        if (snapshot := _snapshot_for_gameweek(candidate)) is not None
-    ), None)
-    if source is None:
-        print(f"GW{target} planning skipped: no finalized source snapshot", flush=True)
-        return
-    artifact = build_artifact(
-        source_snapshot=source, target_event=event, bootstrap=bootstrap,
-        fixtures=_official_fixtures(target, bootstrap), league_id=LEAGUES[0], team_id=2797967, now=now,
-    )
-    _write_json(_planning_name(target), artifact)
-    print(f"GW{target} {artifact['packet_status']} decision plan published", flush=True)
-    # Freeze exactly once in the last 15 minutes. The stored decision is
-    # entirely pre-deadline and therefore safe for later journal analysis.
-    if deadline - timedelta(minutes=15) <= now < deadline and artifact["quality_status"] == "valid":
-        frozen = freeze_payload(artifact, season=SEASON, now=now)
-        _write_json(f"journal-raw/{SEASON}/gw{target:02d}/predeadline.json", frozen, immutable=True)
-        print(f"GW{target} pre-deadline decision frozen", flush=True)
+    args = ["scripts/capture_predeadline_journal.py", "--require-cloud"]
+    if gameweek:
+        args += ["--gw", str(gameweek)]
+    _run(*args)
 
 
 def _validate_gameweek(gameweek: int) -> None:
@@ -203,21 +121,12 @@ def task_finalize_gameweek(gameweek: int | None) -> None:
         print(f"GW{gameweek} snapshots already published; nothing to do", flush=True)
         return
 
-    # The task image carries historical, git-finalized gameweeks as a recovery
-    # source.  On the first scheduled run after this migration, publish those
-    # immutable artifacts instead of trying to fetch them again: the collector
-    # intentionally refuses to overwrite its packaged final files.
-    local_required = [ROOT / "data" / name.removeprefix("snapshots/") for name in required]
-    local_journal = ROOT / "data" / "journal" / SEASON / f"gw{gameweek:02d}.json"
-    if all(path.is_file() for path in local_required) and local_journal.is_file():
-        print(f"GW{gameweek} is already finalized in the task image; publishing to GCS", flush=True)
-    else:
-        _run("scripts/fetch_fixture_horizon.py")
-        _run("scripts/fetch_gw_data_fixed.py", "--gw", str(gameweek), "--league", *map(str, LEAGUES), "--max", "3000", "--workers", "16")
-        for league in LEAGUES:
-            _run("scripts/generate_analysis.py", "--gw", str(gameweek), "--league", str(league))
-        _run("scripts/build_gameweek_journal.py", "--gw", str(gameweek))
-        _run("scripts/audit_model_backtest.py", "--season", SEASON, "--output", "reports/model-validation/2026-27.json")
+    _run("scripts/fetch_fixture_horizon.py")
+    _run("scripts/fetch_gw_data_fixed.py", "--gw", str(gameweek), "--league", *map(str, LEAGUES), "--max", "3000", "--workers", "16")
+    for league in LEAGUES:
+        _run("scripts/generate_analysis.py", "--gw", str(gameweek), "--league", str(league))
+    _run("scripts/build_gameweek_journal.py", "--gw", str(gameweek))
+    _run("scripts/audit_model_backtest.py", "--season", SEASON, "--output", "reports/model-validation/2026-27.json")
     _validate_gameweek(gameweek)
 
     for league in LEAGUES:
@@ -234,9 +143,6 @@ def task_finalize_gameweek(gameweek: int | None) -> None:
     if model_validation.is_file():
         _upload(model_validation, f"snapshots/reports/model-validation/{SEASON}.json", immutable=False)
     print(f"GW{gameweek} finalized and published to gs://{BUCKET}/snapshots/", flush=True)
-    # The completed snapshot is now the authoritative source for the next
-    # deadline's plan; publish that candidate without waiting for the hourly run.
-    task_decision_refresh()
 
 
 def task_monitor() -> None:
@@ -245,11 +151,6 @@ def task_monitor() -> None:
         "scripts/load_smoke.py", f"{API_URL}/v1/leagues/58005/summary?page=1&page_size=50",
         "--requests", "20", "--concurrency", "4", "--p95-ms", "5000", "--byte-limit", "250000",
     )
-
-
-def task_live_refresh() -> None:
-    """Refresh the immutable live manifest without a Cloud Run Job minimum."""
-    _run("scripts/refresh_live_leagues.py")
     _run(
         "scripts/load_smoke.py", f"{SITE_URL}/league",
         "--requests", "10", "--concurrency", "2", "--p95-ms", "8000", "--byte-limit", "1500000",
@@ -258,21 +159,15 @@ def task_live_refresh() -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("task", choices=["fixtures", "capture-journal", "decision-refresh", "decision-final-window", "finalize-gameweek", "monitor", "live-refresh"])
+    parser.add_argument("task", choices=["fixtures", "capture-journal", "finalize-gameweek", "monitor"])
     parser.add_argument("--gw", type=int, default=None, help="Optional gameweek override")
     args = parser.parse_args()
     if args.task == "fixtures":
         task_fixtures()
     elif args.task == "capture-journal":
         task_capture_journal(args.gw)
-    elif args.task == "decision-refresh":
-        task_decision_refresh(gameweek=args.gw)
-    elif args.task == "decision-final-window":
-        task_decision_refresh(final_window=True, gameweek=args.gw)
     elif args.task == "finalize-gameweek":
         task_finalize_gameweek(args.gw)
-    elif args.task == "live-refresh":
-        task_live_refresh()
     else:
         task_monitor()
     return 0

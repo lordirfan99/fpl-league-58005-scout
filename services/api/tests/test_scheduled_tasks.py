@@ -32,39 +32,8 @@ def test_latest_final_gameweek_is_zero_before_any_gameweek_completes(monkeypatch
     assert MODULE._latest_final_gameweek() == 0
 
 
-def test_finalizer_reuses_packaged_finalized_gameweek_before_uploading(monkeypatch, tmp_path: Path) -> None:
-    monkeypatch.setattr(MODULE, "ROOT", tmp_path)
-    monkeypatch.setattr(MODULE, "LEAGUES", (1, 2))
-    for league in MODULE.LEAGUES:
-        for kind in ("data", "compact"):
-            path = tmp_path / "data" / f"gw7_league{league}_{kind}.json"
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text("{}", encoding="utf-8")
-    journal = tmp_path / "data" / "journal" / MODULE.SEASON / "gw07.json"
-    journal.parent.mkdir(parents=True, exist_ok=True)
-    journal.write_text("{}", encoding="utf-8")
-
-    class Blob:
-        def exists(self) -> bool:
-            return False
-
-    class Bucket:
-        def blob(self, _name: str) -> Blob:
-            return Blob()
-
-    commands: list[tuple[str, ...]] = []
-    monkeypatch.setattr(MODULE, "_bucket", lambda: Bucket())
-    monkeypatch.setattr(MODULE, "_run", lambda *command: commands.append(command))
-    monkeypatch.setattr(MODULE, "_validate_gameweek", lambda _gameweek: None)
-    monkeypatch.setattr(MODULE, "_upload", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(MODULE, "task_decision_refresh", lambda *args, **kwargs: None)
-
-    MODULE.task_finalize_gameweek(7)
-    assert commands == []
-
-
 def test_task_names_match_the_provisioned_cloud_run_jobs() -> None:
-    parser_choices = {"fixtures", "capture-journal", "decision-refresh", "decision-final-window", "finalize-gameweek", "monitor"}
+    parser_choices = {"fixtures", "capture-journal", "finalize-gameweek", "monitor"}
     # cloudbuild.api.yaml deploys one job per task arg.
     cloudbuild = (Path(__file__).resolve().parents[3] / "cloudbuild.api.yaml").read_text(encoding="utf-8")
     for task in parser_choices:

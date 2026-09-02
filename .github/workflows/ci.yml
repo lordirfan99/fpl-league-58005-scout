@@ -72,5 +72,4 @@ jobs:
           scripts/monitor_production.py
           scripts/refresh_live_leagues.py
           scripts/run_scheduled_task.py
-          services/api/app/planning.py
           scripts/load_smoke.py
