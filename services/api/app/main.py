@@ -494,6 +494,12 @@ def transfer_optimizer(
     players = {row.element: row for row in first_rows}
     horizon_maps = [{row.element: row for row in rows} for rows in horizon_rows]
     prices = {int(row["id"]): float(row.get("now_cost") or 0) / 10 for row in bootstrap.get("elements", [])}
+    eligible_player_ids = frozenset(
+        int(row["id"]) for row in bootstrap.get("elements", [])
+        if row.get("status", "a") == "a"
+        and (row.get("chance_of_playing_next_round") is None
+             or float(row.get("chance_of_playing_next_round") or 0) >= 75)
+    )
     weights = tuple(round(0.85 ** index, 4) for index in range(len(targets)))
     if chip and chip.lower() not in {"wildcard", "freehit", "bboost", "3xc"}:
         raise HTTPException(status_code=400, detail="Unsupported chip mode")
@@ -503,6 +509,7 @@ def transfer_optimizer(
         MultiWeekContext(
             bank=float(manager.get("gw_bank") or 0) / 10, free_transfers=free_transfers,
             weights=weights, max_transfers=max_transfers, active_chip=active_chip,
+            eligible_player_ids=eligible_player_ids,
         ),
     )
     return {
