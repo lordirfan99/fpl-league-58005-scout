@@ -63,7 +63,7 @@ steps:
       - --set-env-vars=FPL_MY_TEAM_ID=2797967,FPL_DEFAULT_LEAGUE_ID=58005,FPL_SNAPSHOT_BUCKET=irfan-374115-fpl-snapshots,FPL_GIT_SHA=${_GIT_SHA}
       # This replaces every legacy bridge secret binding. The token is private
       # to the API runtime and never reaches the dashboard image.
-      - --set-secrets=FPL_TELEGRAM_BOT_TOKEN=fpl-telegram-bot-token:latest
+      - --set-secrets=FPL_TELEGRAM_BOT_TOKEN=fpl-telegram-bot-token:latest,FPL_TELEGRAM_CHAT_ID=fpl-telegram-chat-id:latest,FPL_TELEGRAM_WEBHOOK_SECRET=fpl-telegram-webhook-secret:latest
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
     args:
