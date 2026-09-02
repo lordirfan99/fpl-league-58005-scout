@@ -8,18 +8,6 @@ steps:
   - name: gcr.io/cloud-builders/docker
     args:
       - build
-      - --file=services/api/Dockerfile.scheduler
-      - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scheduled-service:$BUILD_ID
-      - .
-  - name: gcr.io/cloud-builders/docker
-    args:
-      - build
-      - --file=web-next/Dockerfile
-      - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scout-dashboard:$BUILD_ID
-      - .
-  - name: gcr.io/cloud-builders/docker
-    args:
-      - build
       - --file=services/api/Dockerfile.live-refresh
       - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-live-refresh:$BUILD_ID
       - .
@@ -41,14 +29,6 @@ steps:
     args:
       - push
       - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scheduled-tasks:$BUILD_ID
-  - name: gcr.io/cloud-builders/docker
-    args:
-      - push
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scout-dashboard:$BUILD_ID
-  - name: gcr.io/cloud-builders/docker
-    args:
-      - push
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scheduled-service:$BUILD_ID
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
     args:
@@ -59,35 +39,10 @@ steps:
       - --region=${_REGION}
       - --platform=managed
       - --allow-unauthenticated
-      - --service-account=fpl-control-api@$PROJECT_ID.iam.gserviceaccount.com
       - --set-env-vars=FPL_MY_TEAM_ID=2797967,FPL_DEFAULT_LEAGUE_ID=58005,FPL_SNAPSHOT_BUCKET=irfan-374115-fpl-snapshots,FPL_GIT_SHA=${_GIT_SHA}
-      # This replaces every legacy bridge secret binding. The token is private
-      # to the API runtime and never reaches the dashboard image.
-      - --set-secrets=FPL_TELEGRAM_BOT_TOKEN=fpl-telegram-bot-token:latest,FPL_TELEGRAM_CHAT_ID=fpl-telegram-chat-id:latest,FPL_TELEGRAM_WEBHOOK_SECRET=fpl-telegram-webhook-secret:latest
-  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
-    entrypoint: gcloud
-    args:
-      - run
-      - deploy
-      - fpl-scout-dashboard
-      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scout-dashboard:$BUILD_ID
-      - --region=${_REGION}
-      - --platform=managed
-      - --allow-unauthenticated
-      - --set-env-vars=FPL_API_BASE_URL=https://fpl-scout-api-bztsnhv3ea-uc.a.run.app
-  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
-    entrypoint: gcloud
-    args:
-      - run
-      - deploy
-      - fpl-scheduled-tasks
-      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scheduled-service:$BUILD_ID
-      - --region=${_REGION}
-      - --platform=managed
-      - --no-allow-unauthenticated
-      - --service-account=fpl-scheduled-tasks@$PROJECT_ID.iam.gserviceaccount.com
-      - --set-env-vars=FPL_SNAPSHOT_BUCKET=irfan-374115-fpl-snapshots,FPL_API_BASE_URL=https://fpl-scout-api-bztsnhv3ea-uc.a.run.app,FPL_SITE_URL=https://fpl-scout-intelligence.netlify.app
-      - --timeout=1800
+      # The Autopilot bridge is retired: drop the stale fpl-dashboard-read-token
+      # secret binding so no deployed revision references it.
+      - --clear-secrets
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
     args:
@@ -137,34 +92,6 @@ steps:
       - run
       - jobs
       - deploy
-      - fpl-decision-refresh
-      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scheduled-tasks:$BUILD_ID
-      - --region=${_REGION}
-      - --service-account=fpl-scheduled-tasks@$PROJECT_ID.iam.gserviceaccount.com
-      - --set-env-vars=FPL_SNAPSHOT_BUCKET=irfan-374115-fpl-snapshots
-      - --args=decision-refresh
-      - --task-timeout=10m
-      - --max-retries=1
-  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
-    entrypoint: gcloud
-    args:
-      - run
-      - jobs
-      - deploy
-      - fpl-decision-final-window
-      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scheduled-tasks:$BUILD_ID
-      - --region=${_REGION}
-      - --service-account=fpl-scheduled-tasks@$PROJECT_ID.iam.gserviceaccount.com
-      - --set-env-vars=FPL_SNAPSHOT_BUCKET=irfan-374115-fpl-snapshots
-      - --args=decision-final-window
-      - --task-timeout=10m
-      - --max-retries=1
-  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
-    entrypoint: gcloud
-    args:
-      - run
-      - jobs
-      - deploy
       - fpl-refresh-gameweek
       - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scheduled-tasks:$BUILD_ID
       - --region=${_REGION}
@@ -191,8 +118,6 @@ images:
   - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scout-api:$BUILD_ID
   - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-live-refresh:$BUILD_ID
   - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scheduled-tasks:$BUILD_ID
-  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scout-dashboard:$BUILD_ID
-  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scheduled-service:$BUILD_ID
 substitutions:
   _REGION: us-central1
   _REPOSITORY: fpl-scout

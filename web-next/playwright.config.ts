@@ -13,7 +13,7 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   webServer: process.env.E2E_BASE_URL ? undefined : {
-    command: "node .next/standalone/server.js",
+    command: "npm run start -- --hostname 127.0.0.1 --port 4173",
     url: "http://127.0.0.1:4173/my-team",
     reuseExistingServer: true,
     timeout: 180_000,

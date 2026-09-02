@@ -5,11 +5,10 @@ import hashlib
 import json
 import math
 import re
-import secrets
 import time
 import uuid
 
-from fastapi import Body, FastAPI, HTTPException, Header, Query, Request
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import ValidationError
@@ -20,7 +19,6 @@ from .recommendations import MODEL_VERSION, build_recommendations, cohort_summar
 from .projection_types import PROJECTION_VERSION
 from .projections import build_projections
 from .multiweek_optimizer import MultiWeekContext, OPTIMIZER_VERSION, optimize_multiweek_transfers
-from .planning import next_event, packet_status
 from .repository import ArtifactIntegrityError, LiveSnapshotNotFoundError, SnapshotNotFoundError, SnapshotRepository
 from .schemas import (
     ApiMeta,
@@ -36,9 +34,6 @@ from .schemas import (
 )
 from .settings import settings
 from .validation import snapshot_quality
-from .workspace import WorkspaceLockedError, workspace_store
-from .control import ApprovalExpired, ControlError, PrivateExecutor, TelegramNotifier, control_store
-from .owner_auth import require_owner
 
 
 app = FastAPI(
@@ -50,12 +45,11 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=list(settings.allowed_origins),
     allow_credentials=False,
-    allow_methods=["GET", "PUT", "POST"],
-    allow_headers=["Accept", "Authorization", "Content-Type", "X-FPL-Owner-Key", "X-Telegram-Bot-Api-Secret-Token"],
+    allow_methods=["GET"],
+    allow_headers=["Accept", "Content-Type"],
 )
 repository = SnapshotRepository(settings.data_dir, settings.snapshot_bucket)
 league_registry = LeagueRegistry(settings.data_dir)
-control_store.configure_persistence(settings.snapshot_bucket)
 SEASON_PATTERN = re.compile(r"^20\d{2}-\d{2}$")
 
 
@@ -640,42 +634,40 @@ def decision_current(
     official catalogue, the latest finalized league snapshot and the projection
     model; it is advisory only and is never executable.
     """
+    gw = gw or _current_gameweek()
     disclaimer = "Read-only decision support. Review and apply every change manually in the official FPL app."
-    bootstrap = repository.bootstrap()
-    event = next((row for row in bootstrap.get("events", []) if int(row.get("id") or 0) == gw), None) if gw else next_event(bootstrap)
-    if event is None:
-        raise HTTPException(status_code=404, detail="No upcoming FPL deadline is available")
-    target_gw = int(event["id"])
     try:
-        recommendation = repository.planning("2026-27", target_gw)
-    except SnapshotNotFoundError:
+        recommendation = recommendations(league_id=league_id, gw=gw).model_dump(mode="json")
+    except HTTPException as error:
+        if error.status_code != 404:
+            raise
+        # Before the deadline the current-GW opponent picks are not locked yet,
+        # so no competitor-aware recommendation can exist. Expose that plainly
+        # rather than inventing a move.
         now = datetime.now(timezone.utc).isoformat()
         return {
-            "decision_id": hashlib.sha256(f"{league_id}:{target_gw}:insufficient_data".encode()).hexdigest(),
+            "decision_id": hashlib.sha256(f"{league_id}:{gw}:safe_hold".encode()).hexdigest(),
             "model_version": MODEL_VERSION,
-            "league_id": league_id, "gameweek": target_gw, "target_gameweek": target_gw,
-            "source_gameweek": None,
+            "league_id": league_id,
+            "gameweek": gw,
             "generated_at": now,
-            "meta": {"source": "deadline-planning", "stale": True, "quality_status": "unknown",
-                     "quality_issues": ["planning_artifact_unavailable"], "snapshot_gameweek": None},
+            "meta": {"source": "snapshot", "stale": True, "quality_status": "unknown",
+                     "quality_issues": ["missing_gameweek_snapshot"], "snapshot_gameweek": gw},
             "competitive": {"model_version": MODEL_VERSION, "phase": "MATCH",
-                             "phase_reason": "Waiting for the deadline-safe planning artifact.",
+                             "phase_reason": "Waiting for the current gameweek snapshot.",
                              "alignment": 0, "target_alignment": 82},
             "plan": None,
-            "packet_status": "insufficient_data",
+            "packet_status": "safe_hold",
             "executable": False,
             "execution_authority": "manual_fpl",
             "writes_enabled": False,
             "disclaimer": disclaimer,
         }
-    deadline = datetime.fromisoformat(str(recommendation["deadline"]).replace("Z", "+00:00"))
-    current_status = packet_status(deadline)
-    quality_status = recommendation.get("quality_status", "unknown")
-    quality_issues = recommendation.get("quality_issues", [])
     packet_body = {
-        "league_id": league_id, "gameweek": target_gw,
+        "league_id": league_id,
+        "gameweek": gw,
         "competitive": recommendation["competitive"],
-        "packet_status": current_status,
+        "packet_status": "advisory",
     }
     decision_id = hashlib.sha256(json.dumps(packet_body, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     return {
@@ -683,206 +675,17 @@ def decision_current(
         "decision_id": decision_id,
         "model_version": MODEL_VERSION,
         "league_id": league_id,
-        "gameweek": target_gw, "target_gameweek": target_gw,
-        "generated_at": recommendation.get("generated_at"),
-        "packet_status": current_status,
-        "meta": {"source": "deadline-planning", "snapshot_at": recommendation.get("generated_at"),
-                 "stale": current_status == "locked", "quality_status": quality_status,
-                 "quality_issues": quality_issues, "snapshot_gameweek": recommendation.get("source_gameweek")},
+        "gameweek": gw,
+        "generated_at": recommendation["meta"].get("generated_at"),
+        "meta": recommendation["meta"],
         "competitive": recommendation["competitive"],
         "plan": None,
+        "packet_status": "advisory",
         "executable": False,
         "execution_authority": "manual_fpl",
         "writes_enabled": False,
         "disclaimer": disclaimer,
     }
-
-
-def _require_workspace_access(request: Request) -> None:
-    """Protect mutable advisory drafts without ever exposing the secret.
-
-    Cloud Run deployments must inject this from Secret Manager.  Failing
-    closed is intentional: an unconfigured production service cannot become
-    a public draft store.
-    """
-    expected = settings.workspace_passcode
-    supplied = request.headers.get("x-fpl-workspace-passcode", "")
-    if not expected or not secrets.compare_digest(supplied, expected):
-        raise HTTPException(status_code=401, detail="workspace_access_required")
-
-
-@app.get("/v2/now")
-def now_workspace(
-    league_id: int = Query(default=settings.default_league_id, gt=0),
-    chip: str | None = Query(default=None, max_length=20),
-) -> dict:
-    """Single phase-aware entry point for the private dashboard.
-
-    This composes the existing immutable decision artifact with the owner
-    draft.  It is advisory data only; the client can never receive an FPL
-    execution capability from this endpoint.
-    """
-    bootstrap = repository.bootstrap()
-    event = next_event(bootstrap)
-    if event is None:
-        raise HTTPException(status_code=503, detail="upcoming_deadline_unavailable")
-    target = int(event["id"])
-    decision = decision_current(league_id=league_id, gw=target)
-    draft = workspace_store.get("owner", target)
-    chip_plan = None
-    if chip:
-        # Reuse the same legal, read-only optimizer contract.  A chip changes
-        # the shape of advice (a full squad), never execution authority.
-        chip_plan = transfer_optimizer(
-            league_id=league_id, gw=decision.get("source_gameweek") or max(1, target - 1),
-            chip=chip, max_transfers=3, free_transfers=5,
-        )
-    return {
-        "schema_version": 2,
-        "phase": decision["packet_status"],
-        "target_gameweek": target,
-        "deadline": decision.get("deadline") or event.get("deadline_time"),
-        "decision": decision,
-        "workspace": draft,
-        "chip_plan": chip_plan,
-        "execution_authority": "manual_fpl",
-        "writes_enabled": False,
-    }
-
-
-@app.get("/v2/workspace/draft")
-def workspace_draft(request: Request, gw: int = Query(..., ge=1, le=38)) -> dict:
-    _require_workspace_access(request)
-    record = workspace_store.get("owner", gw)
-    return record or {
-        "schema_version": 1, "target_gameweek": gw, "locked": False,
-        "draft": None, "execution_authority": "manual_fpl", "writes_enabled": False,
-    }
-
-
-@app.put("/v2/workspace/draft")
-def save_workspace_draft(
-    request: Request,
-    payload: dict = Body(...),
-    gw: int = Query(..., ge=1, le=38),
-) -> dict:
-    """Persist a manual advisory draft; never an FPL action."""
-    _require_workspace_access(request)
-    if not isinstance(payload.get("squad", []), list) or len(payload.get("squad", [])) not in {0, 15}:
-        raise HTTPException(status_code=422, detail="draft_squad_must_be_empty_or_15_players")
-    if payload.get("active_chip") not in {None, "wildcard", "freehit", "bboost", "3xc"}:
-        raise HTTPException(status_code=422, detail="unsupported_chip_mode")
-    try:
-        return workspace_store.save("owner", gw, payload)
-    except WorkspaceLockedError as error:
-        raise HTTPException(status_code=423, detail="workspace_locked") from error
-
-
-@app.post("/v2/workspace/lock")
-def lock_workspace_draft(request: Request, gw: int = Query(..., ge=1, le=38)) -> dict:
-    _require_workspace_access(request)
-    record = workspace_store.lock("owner", gw)
-    if record is None:
-        raise HTTPException(status_code=404, detail="workspace_not_found")
-    return record
-
-
-# --------------------------------------------------------------------------- private owner control
-
-def _next_deadline() -> tuple[int, datetime]:
-    event = next_event(repository.bootstrap())
-    if not event:
-        raise HTTPException(status_code=503, detail="upcoming_deadline_unavailable")
-    try:
-        return int(event["id"]), datetime.fromisoformat(str(event["deadline_time"]).replace("Z", "+00:00"))
-    except (KeyError, ValueError) as error:
-        raise HTTPException(status_code=503, detail="upcoming_deadline_invalid") from error
-
-
-def _control_error(error: ControlError) -> HTTPException:
-    codes = {"action_not_found": 404, "deadline_passed": 409, "automation_locked": 423,
-             "approval_token_invalid": 403, "action_not_approved": 409}
-    return HTTPException(status_code=codes.get(str(error), 422), detail=str(error))
-
-
-@app.get("/v3/control/status")
-def control_status(request: Request) -> dict:
-    require_owner(request)
-    gameweek, deadline = _next_deadline()
-    executor = PrivateExecutor(settings.execution_webhook_url, settings.execution_webhook_token)
-    return {
-        "target_gameweek": gameweek, "deadline": deadline.isoformat(),
-        "session_connector": "configured" if executor.configured else "reconnect_required",
-        "telegram": "configured" if settings.telegram_bot_token and settings.telegram_chat_id and settings.telegram_webhook_secret else "not_configured",
-        "google_sign_in": "configured" if settings.owner_email and settings.google_oauth_client_id else "not_configured",
-        **control_store.status(),
-    }
-
-
-@app.get("/v3/control/actions")
-def control_actions(request: Request, limit: int = Query(default=25, ge=1, le=100)) -> dict:
-    require_owner(request)
-    return {"actions": control_store.list(limit)}
-
-
-@app.post("/v3/control/actions")
-def create_control_action(request: Request, payload: dict = Body(...)) -> dict:
-    """Create a single, reviewable action card; it cannot submit by itself."""
-    require_owner(request)
-    gameweek, deadline = _next_deadline()
-    if int(payload.get("target_gameweek") or 0) != gameweek:
-        raise HTTPException(status_code=422, detail="action_target_must_match_next_gameweek")
-    changes = payload.get("changes")
-    if not isinstance(changes, dict) or not changes:
-        raise HTTPException(status_code=422, detail="action_changes_required")
-    try:
-        action = control_store.create(payload, deadline=deadline)
-    except ControlError as error:
-        raise _control_error(error) from error
-    notified = TelegramNotifier(settings.telegram_bot_token, settings.telegram_chat_id).send_action(action)
-    return {
-        "action": action,
-        "telegram_notified": notified,
-        "message": "A configured Telegram bot receives the approval card. It expires in 15 minutes.",
-    }
-
-
-@app.post("/v3/control/emergency-lock")
-def emergency_lock(request: Request, payload: dict = Body(default={})) -> dict:
-    require_owner(request)
-    locked = bool(payload.get("locked", True))
-    return control_store.set_lock(locked, str(payload.get("reason") or "owner_control"))
-
-
-@app.post("/v3/control/telegram/webhook")
-def telegram_control_webhook(
-    payload: dict = Body(...),
-    x_telegram_bot_api_secret_token: str = Header(default=""),
-) -> dict:
-    """Accept an approval callback from one approved Telegram chat only."""
-    expected = settings.telegram_webhook_secret
-    if not expected or not secrets.compare_digest(x_telegram_bot_api_secret_token, expected):
-        raise HTTPException(status_code=401, detail="telegram_webhook_invalid")
-    callback = payload.get("callback_query") if isinstance(payload.get("callback_query"), dict) else {}
-    chat_id = str(((callback.get("message") or {}).get("chat") or {}).get("id") or "")
-    if not settings.telegram_chat_id or not secrets.compare_digest(chat_id, settings.telegram_chat_id):
-        raise HTTPException(status_code=403, detail="telegram_chat_not_allowlisted")
-    parts = str(callback.get("data") or "").split(":")
-    if len(parts) != 4 or parts[0] != "fpl" or parts[1] not in {"approve", "chip"}:
-        raise HTTPException(status_code=422, detail="telegram_callback_invalid")
-    try:
-        action = control_store.approve(parts[2], parts[3], chip_confirmation=parts[1] == "chip")
-        if action["status"] == "approved":
-            executor = PrivateExecutor(settings.execution_webhook_url, settings.execution_webhook_token)
-            if executor.configured:
-                action = control_store.mark_submission(action["action_id"], result=executor.submit(action))
-        elif action["status"] == "pending_chip_confirmation":
-            TelegramNotifier(settings.telegram_bot_token, settings.telegram_chat_id).send_action(action, chip_confirmation=True)
-        return {"ok": True, "action_id": action["action_id"], "status": action["status"]}
-    except ApprovalExpired as error:
-        raise HTTPException(status_code=409, detail="approval_expired") from error
-    except ControlError as error:
-        raise _control_error(error) from error
 
 
 def _current_gameweek() -> int:

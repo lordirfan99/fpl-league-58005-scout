@@ -9,9 +9,10 @@ const number = (value?: number) => typeof value === "number" ? value.toFixed(1) 
 
 export default async function AssistantPage() {
   const review = await getDashboardData().catch(() => null);
+  const rec = review ? await getCompetitiveRecommendation(review.leagueId, review.gameweek).catch(() => null) : null;
+
   const season = review ? deriveSeasonContext(review.bootstrap.events, { finalizedGw: review.gameweek }) : null;
   const targetGameweek = season?.nextDeadlineGw;
-  const rec = review ? await getCompetitiveRecommendation(review.leagueId, targetGameweek ?? review.gameweek).catch(() => null) : null;
   const deadline = season?.nextDeadline ? new Date(season.nextDeadline) : null;
   const hoursRemaining = season?.hoursToDeadline ?? null;
 
@@ -22,8 +23,6 @@ export default async function AssistantPage() {
   const targetAlignment = rec?.competitive.targetAlignment;
   const action = move ? "TRANSFER" : "LINEUP ONLY";
   const quality = rec?.meta.qualityStatus ?? "unknown";
-  const packetStatus = rec?.packetStatus ?? "insufficient_data";
-  const locked = packetStatus === "locked";
 
   return <div className="page-stack">
     <PageHeader
@@ -35,9 +34,9 @@ export default async function AssistantPage() {
 
     <section className="decision-hero">
       <div>
-        <span className="hero-kicker">GW{targetGameweek ?? "—"} · {packetStatus.replace("_", " ").toUpperCase()} · {phase ?? "REVIEW"}</span>
-        <h2>{locked ? "Deadline locked — review live results" : move ? <>{move.outgoing.name} <ArrowRight size={22} /> {move.incoming.name}</> : "Recommendation pending"}</h2>
-        <p>{rec?.competitive.phaseReason ?? "The deadline-safe plan has not been generated yet."} {locked ? "No transfer or captain advice is shown after deadline." : "Review and apply any change manually in FPL."}</p>
+        <span className="hero-kicker">NEXT DEADLINE · GW{targetGameweek ?? "—"} · {phase ?? "REVIEW"}</span>
+        <h2>{move ? <>{move.outgoing.name} <ArrowRight size={22} /> {move.incoming.name}</> : "Set your lineup — no transfer"}</h2>
+        <p>{rec?.competitive.phaseReason ?? "A finalized league snapshot for the current gameweek is not available yet, so no competitor-aware recommendation can be built."} Review and apply any change manually in FPL.</p>
       </div>
       <div className="hero-score">
         <span>{hoursRemaining == null ? "Deadline" : "Time left"}</span>
@@ -46,7 +45,7 @@ export default async function AssistantPage() {
     </section>
 
     <section className="metric-grid">
-      <MetricCard label="Decision status" value={packetStatus.replace("_", " ")} detail={locked ? "Plan frozen; live review only" : rec?.sourceGameweek ? `Based on finalized GW${rec.sourceGameweek}` : "Awaiting a valid source snapshot"} tone={locked ? "warning" : move ? "positive" : "default"} />
+      <MetricCard label="Action now" value={move ? "Transfer" : "Set XI"} detail={move ? "Model-supported candidate below" : "No move clears the model threshold"} tone={move ? "positive" : "default"} />
       <MetricCard label="Target gameweek" value={`GW${targetGameweek ?? "—"}`} detail={deadline ? deadline.toLocaleString("en-MY", { dateStyle: "medium", timeStyle: "short" }) : "Deadline TBC"} />
       <MetricCard label="Elite alignment" value={alignment == null ? "—" : `${alignment.toFixed(0)}%`} detail={targetAlignment == null ? "Target pending" : `Target ${targetAlignment}%`} tone={alignment != null && targetAlignment != null && alignment >= targetAlignment ? "positive" : "warning"} />
       <MetricCard label="Snapshot quality" value={quality === "valid" ? "Valid" : quality === "unknown" ? "Pending" : "Invalid"} detail={rec ? `Reviewed GW${review?.gameweek}` : "Awaiting snapshot"} tone={quality === "valid" ? "positive" : "warning"} />
@@ -55,7 +54,7 @@ export default async function AssistantPage() {
     <div className="content-grid decision-grid">
       <section className="surface">
         <div className="section-heading"><div><span>WHAT TO DO</span><h2>{move ? "Transfer candidate" : "Lineup action"}</h2></div><span className="section-chip">GW{targetGameweek ?? "—"}</span></div>
-        {!locked && move ? <article className="action-row">
+        {move ? <article className="action-row">
           <span className="action-state do">MOVE</span>
           <div>
             <strong>{move.outgoing.name} <ArrowRight size={14} /> {move.incoming.name}</strong>
@@ -63,7 +62,7 @@ export default async function AssistantPage() {
             <p>{number(move.xptsGain)} gross next-GW xPts · {move.incoming.eliteOwnership.toFixed(1)}% elite ownership · hits excluded</p>
           </div>
           <b>Apply in FPL<small>after team news</small></b>
-        </article> : <div className="empty-state"><ShieldCheck /><h3>{locked ? "Plan locked" : "Recommendation not ready"}</h3><p>{locked ? "The final pre-deadline plan is preserved for review. Follow live results until the gameweek is finalised." : "The dashboard will show a plan once its finalized-GW baseline and official inputs are ready."}</p></div>}
+        </article> : <div className="empty-state"><ShieldCheck /><h3>Keep your transfer</h3><p>No move clears the model threshold on the latest finalized snapshot. Focus on the XI and captain.</p></div>}
       </section>
       <section className="surface">
         <div className="section-heading"><div><span>LINEUP CHECK</span><h2>Captain and formation</h2></div><span className="section-chip">Model recommendation</span></div>
@@ -71,7 +70,7 @@ export default async function AssistantPage() {
           <span>C</span>
           <div><strong>{captain?.name ?? "Captain pending"}</strong><small>{rec?.competitive.templateFormation ?? "Formation pending"} · GW{targetGameweek ?? "—"}</small></div>
           <b>{number(captain?.score)}<small>score</small></b>
-          <em>{locked ? "Captain advice is locked after the deadline" : "Confirm final team news before you set your captain"}</em>
+          <em>Confirm final team news before you set your captain</em>
         </article></div>
       </section>
     </div>
@@ -85,6 +84,6 @@ export default async function AssistantPage() {
       </div>
     </section>
 
-    {review && targetGameweek != null && targetGameweek !== review.gameweek ? <section className="execution-note"><Clock3 /><div><strong>Deadline-safe provenance</strong><p>This GW{targetGameweek} plan uses finalized GW{rec?.sourceGameweek ?? review.gameweek} league evidence plus current official FPL prices and fixtures. It never treats a future GW snapshot as available before deadline.</p></div></section> : null}
+    {review && targetGameweek != null && targetGameweek !== review.gameweek ? <section className="execution-note"><Clock3 /><div><strong>Historical research is deliberately separated</strong><p>The finalized team and league review is GW{review.gameweek}; the next deadline is GW{targetGameweek}. The dashboard will not use that older review to manufacture a current transfer recommendation.</p></div></section> : null}
   </div>;
 }
