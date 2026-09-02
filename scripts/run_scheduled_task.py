@@ -245,6 +245,11 @@ def task_monitor() -> None:
         "scripts/load_smoke.py", f"{API_URL}/v1/leagues/58005/summary?page=1&page_size=50",
         "--requests", "20", "--concurrency", "4", "--p95-ms", "5000", "--byte-limit", "250000",
     )
+
+
+def task_live_refresh() -> None:
+    """Refresh the immutable live manifest without a Cloud Run Job minimum."""
+    _run("scripts/refresh_live_leagues.py")
     _run(
         "scripts/load_smoke.py", f"{SITE_URL}/league",
         "--requests", "10", "--concurrency", "2", "--p95-ms", "8000", "--byte-limit", "1500000",
@@ -253,7 +258,7 @@ def task_monitor() -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("task", choices=["fixtures", "capture-journal", "decision-refresh", "decision-final-window", "finalize-gameweek", "monitor"])
+    parser.add_argument("task", choices=["fixtures", "capture-journal", "decision-refresh", "decision-final-window", "finalize-gameweek", "monitor", "live-refresh"])
     parser.add_argument("--gw", type=int, default=None, help="Optional gameweek override")
     args = parser.parse_args()
     if args.task == "fixtures":
@@ -266,6 +271,8 @@ def main() -> int:
         task_decision_refresh(final_window=True, gameweek=args.gw)
     elif args.task == "finalize-gameweek":
         task_finalize_gameweek(args.gw)
+    elif args.task == "live-refresh":
+        task_live_refresh()
     else:
         task_monitor()
     return 0

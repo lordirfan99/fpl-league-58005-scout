@@ -15,14 +15,18 @@ $ProjectNumber = gcloud projects describe $ProjectId --format="value(projectNumb
 $RuntimeServiceAccount = "fpl-scheduled-tasks@$ProjectId.iam.gserviceaccount.com"
 $SchedulerServiceAccount = "fpl-scheduled-tasks-scheduler@$ProjectId.iam.gserviceaccount.com"
 
-# job name -> cron schedule (UTC)
-$Jobs = [ordered]@{
-    "fpl-refresh-fixtures" = "17 * * * *"
-    "fpl-capture-journal"  = "17 * * * *"
-    "fpl-refresh-gameweek" = "23 * * * *"
-    "fpl-decision-refresh" = "27 * * * *"
-    "fpl-decision-final-window" = "*/15 * * * *"
-    "fpl-monitor"          = "*/30 * * * *"
+# Scheduler trigger name -> request-based task and cron schedule (UTC).
+# The old Cloud Run Jobs remain available for manual recovery, but recurring
+# calls use a service so short self-gated requests do not incur a one-minute
+# Cloud Run Job minimum.
+$ServiceName = "fpl-scheduled-tasks"
+$Triggers = [ordered]@{
+    "fpl-refresh-fixtures"       = @{ Task = "fixtures"; Schedule = "17 * * * *" }
+    "fpl-capture-journal"        = @{ Task = "capture-journal"; Schedule = "17 * * * *" }
+    "fpl-refresh-gameweek"       = @{ Task = "finalize-gameweek"; Schedule = "23 * * * *" }
+    "fpl-decision-refresh"       = @{ Task = "decision-refresh"; Schedule = "27 * * * *" }
+    "fpl-decision-final-window"  = @{ Task = "decision-final-window"; Schedule = "*/15 * * * *" }
+    "fpl-monitor"                = @{ Task = "monitor"; Schedule = "*/30 * * * *" }
 }
 
 gcloud services enable run.googleapis.com cloudscheduler.googleapis.com --project $ProjectId
@@ -48,35 +52,28 @@ gcloud iam service-accounts add-iam-policy-binding $RuntimeServiceAccount --memb
 # The Scheduler service agent may mint OAuth tokens for the scheduler identity.
 gcloud iam service-accounts add-iam-policy-binding $SchedulerServiceAccount --member "serviceAccount:service-$ProjectNumber@gcp-sa-cloudscheduler.iam.gserviceaccount.com" --role roles/iam.serviceAccountTokenCreator --project $ProjectId
 
-$AnyMissing = $false
-foreach ($JobName in $Jobs.Keys) {
-    $JobExists = gcloud run jobs list --region $Region --project $ProjectId --filter "metadata.name=$JobName" --format="value(metadata.name)"
-    if (-not $JobExists) {
-        Write-Output "Cloud Run Job '$JobName' not deployed yet."
-        $AnyMissing = $true
-        continue
-    }
-
-    # Scheduler may start this job.
-    gcloud run jobs add-iam-policy-binding $JobName --region $Region --member "serviceAccount:$SchedulerServiceAccount" --role roles/run.invoker --project $ProjectId
-
-    $JobUri = "https://run.googleapis.com/v2/projects/$ProjectId/locations/$Region/jobs/${JobName}:run"
-    $Schedule = $Jobs[$JobName]
-    $Existing = gcloud scheduler jobs list --location $Region --project $ProjectId --filter "name:$JobName" --format="value(name)"
-    if ($Existing) {
-        gcloud scheduler jobs update http $JobName --location $Region --schedule "$Schedule" --time-zone "Etc/UTC" --uri $JobUri --http-method POST --oauth-service-account-email $SchedulerServiceAccount --oauth-token-scope "https://www.googleapis.com/auth/cloud-platform" --attempt-deadline "1800s" --max-retry-attempts 2 --project $ProjectId
-    } else {
-        gcloud scheduler jobs create http $JobName --location $Region --schedule "$Schedule" --time-zone "Etc/UTC" --uri $JobUri --http-method POST --oauth-service-account-email $SchedulerServiceAccount --oauth-token-scope "https://www.googleapis.com/auth/cloud-platform" --attempt-deadline "1800s" --max-retry-attempts 2 --project $ProjectId
-    }
-    Write-Output "Provisioned Cloud Scheduler trigger '$JobName' ($Schedule UTC)."
-}
-
-if ($AnyMissing) {
-    Write-Output ""
-    Write-Output "Deploy the production branch (cloudbuild.api.yaml creates the jobs), then run this script once more to bind the Scheduler triggers."
+$ServiceUrl = gcloud run services describe $ServiceName --region $Region --project $ProjectId --format="value(status.url)" 2>$null
+if (-not $ServiceUrl) {
+    Write-Output "Cloud Run service '$ServiceName' not deployed yet. Deploy the production branch, then run this script again."
     exit 0
 }
 
+# Scheduler may invoke only this private service.
+gcloud run services add-iam-policy-binding $ServiceName --region $Region --member "serviceAccount:$SchedulerServiceAccount" --role roles/run.invoker --project $ProjectId
+
+foreach ($TriggerName in $Triggers.Keys) {
+    $Task = $Triggers[$TriggerName].Task
+    $Schedule = $Triggers[$TriggerName].Schedule
+    $TaskUri = "$ServiceUrl/tasks/$Task"
+    $Existing = gcloud scheduler jobs list --location $Region --project $ProjectId --filter "name:$TriggerName" --format="value(name)"
+    if ($Existing) {
+        gcloud scheduler jobs update http $TriggerName --location $Region --schedule "$Schedule" --time-zone "Etc/UTC" --uri $TaskUri --http-method POST --oidc-service-account-email $SchedulerServiceAccount --oidc-token-audience $ServiceUrl --attempt-deadline "1800s" --max-retry-attempts 2 --project $ProjectId
+    } else {
+        gcloud scheduler jobs create http $TriggerName --location $Region --schedule "$Schedule" --time-zone "Etc/UTC" --uri $TaskUri --http-method POST --oidc-service-account-email $SchedulerServiceAccount --oidc-token-audience $ServiceUrl --attempt-deadline "1800s" --max-retry-attempts 2 --project $ProjectId
+    }
+    Write-Output "Provisioned request-based trigger '$TriggerName' -> $Task ($Schedule UTC)."
+}
+
 Write-Output ""
-Write-Output "All scheduled-task jobs and Cloud Scheduler triggers are provisioned."
+Write-Output "All request-based Cloud Scheduler triggers are provisioned."
 Write-Output "The matching GitHub Actions workflows remain available as manual (workflow_dispatch) fallbacks."

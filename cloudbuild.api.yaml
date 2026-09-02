@@ -8,6 +8,12 @@ steps:
   - name: gcr.io/cloud-builders/docker
     args:
       - build
+      - --file=services/api/Dockerfile.scheduler
+      - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scheduled-service:$BUILD_ID
+      - .
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
       - --file=web-next/Dockerfile
       - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scout-dashboard:$BUILD_ID
       - .
@@ -39,6 +45,10 @@ steps:
     args:
       - push
       - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scout-dashboard:$BUILD_ID
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scheduled-service:$BUILD_ID
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
     args:
@@ -64,6 +74,19 @@ steps:
       - --platform=managed
       - --allow-unauthenticated
       - --set-env-vars=FPL_API_BASE_URL=https://fpl-scout-api-bztsnhv3ea-uc.a.run.app
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - fpl-scheduled-tasks
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scheduled-service:$BUILD_ID
+      - --region=${_REGION}
+      - --platform=managed
+      - --no-allow-unauthenticated
+      - --service-account=fpl-scheduled-tasks@$PROJECT_ID.iam.gserviceaccount.com
+      - --set-env-vars=FPL_SNAPSHOT_BUCKET=irfan-374115-fpl-snapshots,FPL_API_BASE_URL=https://fpl-scout-api-bztsnhv3ea-uc.a.run.app,FPL_SITE_URL=https://fpl-scout-intelligence.netlify.app
+      - --timeout=1800
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
     args:
@@ -168,6 +191,7 @@ images:
   - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-live-refresh:$BUILD_ID
   - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scheduled-tasks:$BUILD_ID
   - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scout-dashboard:$BUILD_ID
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scheduled-service:$BUILD_ID
 substitutions:
   _REGION: us-central1
   _REPOSITORY: fpl-scout
