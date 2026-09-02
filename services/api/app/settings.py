@@ -14,6 +14,7 @@ class Settings:
     snapshot_bucket: str | None
     git_revision: str | None
     build_time: str | None
+    workspace_passcode: str | None
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -34,6 +35,7 @@ class Settings:
             snapshot_bucket=os.getenv("FPL_SNAPSHOT_BUCKET", "").strip() or None,
             git_revision=(os.getenv("FPL_GIT_SHA") or os.getenv("K_REVISION") or "").strip() or None,
             build_time=os.getenv("FPL_BUILD_TIME", "").strip() or None,
+            workspace_passcode=os.getenv("FPL_WORKSPACE_PASSCODE", "").strip() or None,
         )
 
 

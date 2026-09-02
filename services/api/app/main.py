@@ -5,10 +5,11 @@ import hashlib
 import json
 import math
 import re
+import secrets
 import time
 import uuid
 
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import Body, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import ValidationError
@@ -35,6 +36,7 @@ from .schemas import (
 )
 from .settings import settings
 from .validation import snapshot_quality
+from .workspace import WorkspaceLockedError, workspace_store
 
 
 app = FastAPI(
@@ -46,7 +48,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=list(settings.allowed_origins),
     allow_credentials=False,
-    allow_methods=["GET"],
+    allow_methods=["GET", "PUT", "POST"],
     allow_headers=["Accept", "Content-Type"],
 )
 repository = SnapshotRepository(settings.data_dir, settings.snapshot_bucket)
@@ -495,6 +497,12 @@ def transfer_optimizer(
     players = {row.element: row for row in first_rows}
     horizon_maps = [{row.element: row for row in rows} for rows in horizon_rows]
     prices = {int(row["id"]): float(row.get("now_cost") or 0) / 10 for row in bootstrap.get("elements", [])}
+    eligible_player_ids = frozenset(
+        int(row["id"]) for row in bootstrap.get("elements", [])
+        if row.get("status", "a") == "a"
+        and (row.get("chance_of_playing_next_round") is None
+             or float(row.get("chance_of_playing_next_round") or 0) >= 75)
+    )
     weights = tuple(round(0.85 ** index, 4) for index in range(len(targets)))
     if chip and chip.lower() not in {"wildcard", "freehit", "bboost", "3xc"}:
         raise HTTPException(status_code=400, detail="Unsupported chip mode")
@@ -504,6 +512,7 @@ def transfer_optimizer(
         MultiWeekContext(
             bank=float(manager.get("gw_bank") or 0) / 10, free_transfers=free_transfers,
             weights=weights, max_transfers=max_transfers, active_chip=active_chip,
+            eligible_player_ids=eligible_player_ids,
         ),
     )
     return {
@@ -684,6 +693,95 @@ def decision_current(
         "writes_enabled": False,
         "disclaimer": disclaimer,
     }
+
+
+def _require_workspace_access(request: Request) -> None:
+    """Protect mutable advisory drafts without ever exposing the secret.
+
+    Cloud Run deployments must inject this from Secret Manager.  Failing
+    closed is intentional: an unconfigured production service cannot become
+    a public draft store.
+    """
+    expected = settings.workspace_passcode
+    supplied = request.headers.get("x-fpl-workspace-passcode", "")
+    if not expected or not secrets.compare_digest(supplied, expected):
+        raise HTTPException(status_code=401, detail="workspace_access_required")
+
+
+@app.get("/v2/now")
+def now_workspace(
+    league_id: int = Query(default=settings.default_league_id, gt=0),
+    chip: str | None = Query(default=None, max_length=20),
+) -> dict:
+    """Single phase-aware entry point for the private dashboard.
+
+    This composes the existing immutable decision artifact with the owner
+    draft.  It is advisory data only; the client can never receive an FPL
+    execution capability from this endpoint.
+    """
+    bootstrap = repository.bootstrap()
+    event = next_event(bootstrap)
+    if event is None:
+        raise HTTPException(status_code=503, detail="upcoming_deadline_unavailable")
+    target = int(event["id"])
+    decision = decision_current(league_id=league_id, gw=target)
+    draft = workspace_store.get("owner", target)
+    chip_plan = None
+    if chip:
+        # Reuse the same legal, read-only optimizer contract.  A chip changes
+        # the shape of advice (a full squad), never execution authority.
+        chip_plan = transfer_optimizer(
+            league_id=league_id, gw=decision.get("source_gameweek") or max(1, target - 1),
+            chip=chip, max_transfers=3, free_transfers=5,
+        )
+    return {
+        "schema_version": 2,
+        "phase": decision["packet_status"],
+        "target_gameweek": target,
+        "deadline": decision.get("deadline") or event.get("deadline_time"),
+        "decision": decision,
+        "workspace": draft,
+        "chip_plan": chip_plan,
+        "execution_authority": "manual_fpl",
+        "writes_enabled": False,
+    }
+
+
+@app.get("/v2/workspace/draft")
+def workspace_draft(request: Request, gw: int = Query(..., ge=1, le=38)) -> dict:
+    _require_workspace_access(request)
+    record = workspace_store.get("owner", gw)
+    return record or {
+        "schema_version": 1, "target_gameweek": gw, "locked": False,
+        "draft": None, "execution_authority": "manual_fpl", "writes_enabled": False,
+    }
+
+
+@app.put("/v2/workspace/draft")
+def save_workspace_draft(
+    request: Request,
+    payload: dict = Body(...),
+    gw: int = Query(..., ge=1, le=38),
+) -> dict:
+    """Persist a manual advisory draft; never an FPL action."""
+    _require_workspace_access(request)
+    if not isinstance(payload.get("squad", []), list) or len(payload.get("squad", [])) not in {0, 15}:
+        raise HTTPException(status_code=422, detail="draft_squad_must_be_empty_or_15_players")
+    if payload.get("active_chip") not in {None, "wildcard", "freehit", "bboost", "3xc"}:
+        raise HTTPException(status_code=422, detail="unsupported_chip_mode")
+    try:
+        return workspace_store.save("owner", gw, payload)
+    except WorkspaceLockedError as error:
+        raise HTTPException(status_code=423, detail="workspace_locked") from error
+
+
+@app.post("/v2/workspace/lock")
+def lock_workspace_draft(request: Request, gw: int = Query(..., ge=1, le=38)) -> dict:
+    _require_workspace_access(request)
+    record = workspace_store.lock("owner", gw)
+    if record is None:
+        raise HTTPException(status_code=404, detail="workspace_not_found")
+    return record
 
 
 def _current_gameweek() -> int:

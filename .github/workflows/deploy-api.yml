@@ -5,6 +5,7 @@ on:
     branches: [master]
     paths:
       - "services/api/**"
+      - "web-next/**"
       - "cloudbuild.api.yaml"
       - "data/bootstrap_cache.json"
       - "data/fixtures_cache.json"

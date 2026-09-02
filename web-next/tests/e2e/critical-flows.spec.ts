@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
-const routes = ["/my-team", "/assistant", "/planner", "/journal", "/settings"];
+const routes = ["/now", "/builder", "/live", "/journal", "/settings"];
 const dashboardRoutes = [
-  "/my-team", "/assistant", "/v5-lab", "/journal", "/planner",
+  "/now", "/builder", "/live", "/my-team", "/assistant", "/v5-lab", "/journal", "/planner",
   "/league?league=58005", "/league?league=131997", "/elite?league=131997", "/compare?league=131997",
   "/transfers?league=58005", "/transfers?league=131997", "/analytics?league=131997", "/players", "/settings",
 ];

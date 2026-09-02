@@ -8,6 +8,12 @@ steps:
   - name: gcr.io/cloud-builders/docker
     args:
       - build
+      - --file=web-next/Dockerfile
+      - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scout-dashboard:$BUILD_ID
+      - .
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
       - --file=services/api/Dockerfile.live-refresh
       - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-live-refresh:$BUILD_ID
       - .
@@ -29,6 +35,10 @@ steps:
     args:
       - push
       - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scheduled-tasks:$BUILD_ID
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scout-dashboard:$BUILD_ID
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
     args:
@@ -43,6 +53,17 @@ steps:
       # The Autopilot bridge is retired: drop the stale fpl-dashboard-read-token
       # secret binding so no deployed revision references it.
       - --clear-secrets
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - fpl-scout-dashboard
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scout-dashboard:$BUILD_ID
+      - --region=${_REGION}
+      - --platform=managed
+      - --allow-unauthenticated
+      - --set-env-vars=FPL_API_BASE_URL=https://fpl-scout-api-bztsnhv3ea-uc.a.run.app
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
     args:
@@ -146,6 +167,7 @@ images:
   - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scout-api:$BUILD_ID
   - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-live-refresh:$BUILD_ID
   - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scheduled-tasks:$BUILD_ID
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/fpl-scout-dashboard:$BUILD_ID
 substitutions:
   _REGION: us-central1
   _REPOSITORY: fpl-scout

@@ -29,6 +29,10 @@ class MultiWeekContext:
     risk_weight: float = 0.05
     active_chip: str | None = None
     candidate_pool_per_position: int = 6
+    # Official FPL availability is deliberately supplied by the caller.  The
+    # projection model does not own injury/status truth and must not quietly
+    # select a flagged player into a recommended squad.
+    eligible_player_ids: frozenset[int] | None = None
 
 
 def optimize_multiweek_transfers(
@@ -56,7 +60,9 @@ def optimize_multiweek_transfers(
     squad_set = set(squad)
     for position in {player.position for player in players.values()}:
         candidates_by_position[position] = sorted(
-            (element for element, player in players.items() if player.position == position and element not in squad_set),
+            (element for element, player in players.items()
+             if player.position == position and element not in squad_set
+             and (context.eligible_player_ids is None or element in context.eligible_player_ids)),
             key=lambda element: weighted_points[element], reverse=True,
         )[:context.candidate_pool_per_position]
 
@@ -128,7 +134,9 @@ def _optimize_chip_squad(
     requirements = ["GKP"] * 2 + ["DEF"] * 5 + ["MID"] * 5 + ["FWD"] * 3
     candidates = {
         position: sorted(
-            (element for element, player in players.items() if player.position == position),
+            (element for element, player in players.items()
+             if player.position == position
+             and (context.eligible_player_ids is None or element in context.eligible_player_ids)),
             key=lambda element: weighted_points[element], reverse=True,
         )[:40]
         for position in ("GKP", "DEF", "MID", "FWD")
