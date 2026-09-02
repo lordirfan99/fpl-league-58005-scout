@@ -61,9 +61,9 @@ steps:
       - --allow-unauthenticated
       - --service-account=fpl-control-api@$PROJECT_ID.iam.gserviceaccount.com
       - --set-env-vars=FPL_MY_TEAM_ID=2797967,FPL_DEFAULT_LEAGUE_ID=58005,FPL_SNAPSHOT_BUCKET=irfan-374115-fpl-snapshots,FPL_GIT_SHA=${_GIT_SHA}
-      # The Autopilot bridge is retired: drop the stale fpl-dashboard-read-token
-      # secret binding so no deployed revision references it.
-      - --clear-secrets
+      # This replaces every legacy bridge secret binding. The token is private
+      # to the API runtime and never reaches the dashboard image.
+      - --set-secrets=FPL_TELEGRAM_BOT_TOKEN=fpl-telegram-bot-token:latest
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
     args:
